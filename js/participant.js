@@ -161,14 +161,14 @@ const Participant = (() => {
     if (alreadyVoted || hasVoted) {
       feedbackHTML = `
         <div class="part-feedback success">
-          <span class="part-feedback-icon">✅</span>
-          <span>Vote submitted successfully! Your response has been recorded.</span>
+          <span class="part-feedback-icon"><i data-lucide="check-circle" class="icon-md"></i></span>
+          <span>Your response for this slide has been recorded.</span>
         </div>
       `;
     } else if (status === 'closed' && !hasVoted) {
       feedbackHTML = `
         <div class="part-feedback error">
-          <span class="part-feedback-icon">🔒</span>
+          <span class="part-feedback-icon"><i data-lucide="lock" class="icon-md"></i></span>
           <span>This poll is now closed. Voting is no longer accepted.</span>
         </div>
       `;

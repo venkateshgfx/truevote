@@ -333,6 +333,10 @@ function seedDemoData(existingSlides) {
   const votes = existingSlides ? {} : { slide_1: {}, slide_2: {}, slide_3: {} };
   const pollStatus = existingSlides ? {} : { slide_1: 'open', slide_2: 'pending', slide_3: 'pending' };
 
+  // Declare presId and demoSessionCode BEFORE the seed block so they're in scope
+  const presId = `pres_${Date.now()}`;
+  const demoSessionCode = generateSessionCode();
+
   // Seed some demo votes if fresh
   if (!existingSlides) {
     const demoVoters = [
@@ -341,13 +345,11 @@ function seedDemoData(existingSlides) {
     ];
     const s1opts = [[0],[1],[1],[2],[0],[3]];
     demoVoters.forEach((email, i) => {
-      const h = generateUserHash(email, presId); // use presId as session salt
+      const h = generateUserHash(email, presId); // session-scoped salt
       votes['slide_1'][h] = { options: s1opts[i], ts: now, email };
     });
   }
 
-  const presId = `pres_${Date.now()}`;
-  const demoSessionCode = generateSessionCode();
   const demoPres = {
     id: presId,
     name: existingSlides ? 'My Presentation' : 'Demo: Tech Team Pulse',

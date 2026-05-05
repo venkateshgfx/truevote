@@ -234,17 +234,8 @@ const Auth = (() => {
     try {
       await _delay(400);
       // Session-scoped hash: email + session code → unique per session
-      // Same email in same session → always same hash → duplicate blocked
+      // Same email in same session → always same hash → duplicate blocked per-slide
       const userHash = generateUserHash(email, code);
-
-      // Early duplicate check: has this email already voted in any slide?
-      const state = State.get();
-      const alreadyVoted = Object.values(state.votes || {}).some(sv => sv[userHash]);
-      if (alreadyVoted) {
-        errEl.textContent = 'This email has already submitted votes in this session.';
-        errEl.classList.remove('hidden');
-        return;
-      }
 
       State.set({
         user: { email, userHash, role: 'participant' },
