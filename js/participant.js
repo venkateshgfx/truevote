@@ -19,12 +19,18 @@ const Participant = (() => {
     el.innerHTML = `
       <header class="part-header">
         <div class="part-header-logo">
-          <div class="part-header-logo-icon">📊</div>
+          <div class="part-header-logo-icon">
+            <i data-lucide="bar-chart-2" class="icon-sm" style="color:#fff"></i>
+          </div>
           LivePoll<span style="color:var(--accent-primary)">Secure</span>
         </div>
         <div class="part-user-info">
-          <div class="part-user-hash" title="${user?.userHash || ''}">${hashDisplay}</div>
-          <button class="btn btn-ghost btn-sm btn-icon" onclick="App.navigate('auth')" title="Leave session" style="font-size:14px">🚪</button>
+          <span class="part-user-email" title="${user?.email || ''}">
+            <i data-lucide="user" class="icon-xs"></i> ${user?.email || 'Anonymous'}
+          </span>
+          <button class="btn btn-ghost btn-sm btn-icon" onclick="App.navigate('auth')" title="Leave session">
+            <i data-lucide="log-out" class="icon-sm"></i>
+          </button>
         </div>
       </header>
       <div class="part-content" id="part-content"></div>
@@ -49,30 +55,17 @@ const Participant = (() => {
     const screen = document.getElementById('screen-participant');
     if (!content || !screen) return;
 
-    // Apply universal theme
-    if (state.presSettings?.themeBgImage) {
-      screen.style.backgroundImage = `url(${state.presSettings.themeBgImage})`;
-      screen.style.backgroundSize = 'cover';
-      screen.style.backgroundPosition = 'center';
-      screen.style.backgroundColor = '';
-    } else {
-      screen.style.backgroundImage = '';
-      screen.style.backgroundColor = state.presSettings?.themeBgColor || '';
-    }
-
-    // Apply universal logo if exists
-    const logoIcon = document.querySelector('.part-header-logo-icon');
-    if (logoIcon && state.presSettings?.themeLogo) {
-      logoIcon.innerHTML = `<img src="${state.presSettings.themeLogo}" style="width:100%; height:100%; object-fit:contain;" />`;
-      logoIcon.style.background = 'transparent';
-    }
-
-    // Text & Fonts
-    if (state.presSettings?.themeTextColor) {
-      screen.style.color = state.presSettings.themeTextColor;
-    }
+    // Only apply custom font — keep the light-mode background intact.
+    // DO NOT apply presenter's dark bg/text colors to the participant screen.
     if (state.presSettings?.themeFontFamily) {
       screen.style.fontFamily = state.presSettings.themeFontFamily;
+    }
+
+    // Apply logo to header icon if custom logo exists
+    const logoIcon = document.querySelector('.part-header-logo-icon');
+    if (logoIcon && state.presSettings?.themeLogo) {
+      logoIcon.innerHTML = `<img src="${state.presSettings.themeLogo}" style="width:100%;height:100%;object-fit:contain;" />`;
+      logoIcon.style.background = 'transparent';
     }
 
     if (!slide) {
@@ -82,7 +75,9 @@ const Participant = (() => {
             <div class="waiting-ring"></div>
             <div class="waiting-ring"></div>
             <div class="waiting-ring"></div>
-            <div class="waiting-icon">📊</div>
+            <div class="waiting-icon">
+              <i data-lucide="bar-chart-2" class="icon-xl" style="color:var(--accent-primary)"></i>
+            </div>
           </div>
           <div class="waiting-title">No Session Active</div>
           <div class="waiting-subtitle">No presentation is currently running. Please wait for the presenter to begin.</div>
@@ -93,6 +88,7 @@ const Participant = (() => {
           </div>
         </div>
       `;
+      if (typeof lucide !== 'undefined') lucide.createIcons();
       return;
     }
 
@@ -115,7 +111,7 @@ const Participant = (() => {
       content.innerHTML = `
         <div class="part-slide-info">
           <span class="part-slide-num">Slide ${state.activeSlideIndex + 1} of ${state.slides.length}</span>
-          <span class="part-poll-status-badge closed">
+          <span class="part-poll-status-badge pending">
             <span class="status-badge-dot"></span> Not Started
           </span>
         </div>
@@ -124,7 +120,9 @@ const Participant = (() => {
             <div class="waiting-ring"></div>
             <div class="waiting-ring"></div>
             <div class="waiting-ring"></div>
-            <div class="waiting-icon">⏳</div>
+            <div class="waiting-icon">
+              <i data-lucide="clock" class="icon-xl" style="color:var(--text-muted)"></i>
+            </div>
           </div>
           <div class="waiting-title">Waiting for Presenter</div>
           <div class="waiting-subtitle">${_escHtml(slide.question)}</div>
@@ -135,6 +133,7 @@ const Participant = (() => {
           </div>
         </div>
       `;
+      if (typeof lucide !== 'undefined') lucide.createIcons();
       return;
     }
 
@@ -228,7 +227,9 @@ const Participant = (() => {
     let resultsHTML = '';
     if (showResults) {
       resultsHTML = `
-        <div class="part-results-title">📊 Live Results (${total} votes)</div>
+        <div class="part-results-title">
+          <i data-lucide="bar-chart-3" class="icon-sm"></i> Live Results (${total} votes)
+        </div>
         <div id="part-mini-chart"></div>
       `;
     }
@@ -262,11 +263,7 @@ const Participant = (() => {
       const miniChart = document.getElementById('part-mini-chart');
       if (miniChart) Charts.renderMiniBars(miniChart, slide, counts, state.presSettings?.displayMode || 'percent', state.presSettings?.themeVisColours);
     }
-
-    // Single-choice auto-submit
-    if (!isMulti && pollOpen) {
-      // Already handled by click → auto-submit after 200ms animation
-    }
+    if (typeof lucide !== 'undefined') lucide.createIcons();
   }
 
   function _selectOption(index) {
