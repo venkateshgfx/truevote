@@ -1,5 +1,5 @@
 /**
- * LivePoll Secure — Participant Experience
+ * SlideMeter — Participant Experience
  * Mobile-first reactive polling interface
  */
 
@@ -22,7 +22,7 @@ const Participant = (() => {
           <div class="part-header-logo-icon">
             <i data-lucide="bar-chart-2" class="icon-sm" style="color:#fff"></i>
           </div>
-          LivePoll<span style="color:var(--accent-primary)">Secure</span>
+          Slide<span style="color:var(--accent-primary)">Meter</span>
         </div>
         <div class="part-user-info">
           <span class="part-user-email" title="${user?.email || ''}">

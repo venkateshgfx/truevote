@@ -1,5 +1,5 @@
 /**
- * LivePoll Secure — Presenter Editor Module
+ * SlideMeter — Presenter Editor Module
  * 3-Column Workspace: Nav | Canvas | Inspector
  */
 
@@ -24,7 +24,7 @@ const Editor = (() => {
           </button>
           <div class="topbar-logo">
             <div class="topbar-logo-icon"><i data-lucide="bar-chart-2" class="icon-md" style="color:#fff"></i></div>
-            LivePoll<span style="color:var(--accent-primary)">Secure</span>
+            Slide<span style="color:var(--accent-primary)">Meter</span>
           </div>
           <div class="topbar-session">
             <span class="text-muted text-sm">Session:</span>
@@ -696,7 +696,7 @@ const Editor = (() => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `livepoll_${slide.id}_${new Date().toISOString().slice(0,10)}.csv`;
+    a.download = `slidemeter_${slide.id}_${new Date().toISOString().slice(0,10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     Toast.show('CSV exported successfully', 'success');

@@ -1,5 +1,5 @@
 /**
- * LivePoll Secure — Presenter Dashboard
+ * SlideMeter — Presenter Dashboard
  * Home screen with full presentations management
  * Uses Lucide icons throughout
  */
@@ -28,7 +28,7 @@ const Dashboard = (() => {
             <div class="dash-logo-icon">
               <i data-lucide="bar-chart-2" class="icon-lg" style="color:#fff"></i>
             </div>
-            <div class="dash-logo-text">LivePoll<span>Secure</span></div>
+            <div class="dash-logo-text">Slide<span>Meter</span></div>
           </div>
 
           <nav class="dash-nav">

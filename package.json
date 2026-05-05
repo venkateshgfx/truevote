@@ -1,5 +1,7 @@
 {
-  "name": "livepoll-secure",
+  "name": "slidemeter",
+  "version": "1.0.0",
+  "description": "SlideMeter — Real-Time Audience Polling with zero duplicate votes",
   "version": "1.0.0",
   "description": "LivePoll Secure — Enterprise Audience Engagement Platform with zero duplicate votes",
   "main": "server.js",

@@ -1,5 +1,5 @@
 /**
- * LivePoll Secure — Auth Module
+ * SlideMeter — Auth Module
  * Separate screens for Presenter login and Participant join
  */
 
@@ -15,7 +15,7 @@ const Auth = (() => {
           <div class="auth-left-inner">
             <div class="auth-brand">
               <div class="auth-brand-icon"><i data-lucide="bar-chart-2" class="icon-lg" style="color:#fff"></i></div>
-              <div class="auth-brand-name">LivePoll<span>Secure</span></div>
+              <div class="auth-brand-name">Slide<span>Meter</span></div>
             </div>
             <h1 class="auth-headline">
               Run smarter<br/>live polls.<br/>
@@ -38,7 +38,7 @@ const Auth = (() => {
           <div class="auth-card">
             <div class="auth-card-logo">
               <div class="auth-card-logo-icon"><i data-lucide="bar-chart-2" class="icon-md" style="color:#fff"></i></div>
-              LivePoll<span>Secure</span>
+              Slide<span>Meter</span>
             </div>
             <div class="auth-card-title">Presenter Sign In</div>
             <div class="auth-card-subtitle">Sign in to manage your live polls and presentations</div>
@@ -90,7 +90,7 @@ const Auth = (() => {
           <div class="join-header">
             <div class="join-logo">
               <div class="join-logo-icon"><i data-lucide="bar-chart-2" class="icon-md" style="color:#fff"></i></div>
-              <div class="join-logo-name">LivePoll<span>Secure</span></div>
+              <div class="join-logo-name">Slide<span>Meter</span></div>
             </div>
             <div class="join-title">Join a Live Session</div>
             <div class="join-subtitle">Enter the session code your presenter shared with you</div>
@@ -192,7 +192,7 @@ const Auth = (() => {
       const userHash = generateUserHash(username, password);
 
       State.set({
-        user: { email: username + '@livepoll.app', username, userHash, role: 'presenter' },
+        user: { email: username + '@slidemeter.com', username, userHash, role: 'presenter' },
         currentScreen: 'dashboard',
       });
 

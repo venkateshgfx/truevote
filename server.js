@@ -1,5 +1,5 @@
 /**
- * LivePoll Secure — Backend Server
+ * SlideMeter — Backend Server
  * Pure Node.js (no npm packages). Serves static files + vote API.
  *
  *  POST /api/vote         — cast a vote (duplicate = 409)

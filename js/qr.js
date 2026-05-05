@@ -1,5 +1,5 @@
 /**
- * LivePoll Secure — QR Code & Join URL Module
+ * SlideMeter — QR Code & Join URL Module
  *
  * Generates the participant join URL and renders real, scannable QR codes.
  * Uses QRCode.js (loaded from CDN) with a canvas fallback.
@@ -251,12 +251,12 @@ const QRHelper = (() => {
 
     if (canvas) {
       const a = document.createElement('a');
-      a.download = `livepoll-join-${State.get().sessionCode}.png`;
+      a.download = `slidemeter-join-${State.get().sessionCode}.png`;
       a.href = canvas.toDataURL('image/png');
       a.click();
     } else if (img) {
       const a = document.createElement('a');
-      a.download = `livepoll-join-${State.get().sessionCode}.png`;
+      a.download = `slidemeter-join-${State.get().sessionCode}.png`;
       a.href = img.src;
       a.click();
     }

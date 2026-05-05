@@ -1,5 +1,5 @@
 /**
- * LivePoll Secure — Global Application State
+ * SlideMeter — Global Application State
  * Single source of truth. Uses BroadcastChannel for cross-tab sync.
  */
 
@@ -37,7 +37,7 @@ const State = (() => {
   let channel = null;
 
   try {
-    channel = new BroadcastChannel('livepoll_secure_v1');
+    channel = new BroadcastChannel('slidemeter_v1');
     channel.onmessage = (e) => {
       if (e.data && e.data.type === 'STATE_UPDATE') {
         const patch = e.data.patch;

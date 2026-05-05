@@ -1,10 +1,11 @@
 /**
- * LivePoll Secure — DB simulation layer
+ * SlideMeter — DB simulation layer
  * Wraps localStorage + in-memory state for persistence
  */
 
 const DB = (() => {
-  const KEY = 'livepoll_secure_db_v2'; // v2 includes presentations
+  const KEY          = 'slidemeter_db_v1';     // main state store
+  const SEEDED_FLAG  = 'slidemeter_seeded_v1'; // set after first-run seed
 
   function save() {
     try {
@@ -37,10 +38,21 @@ const DB = (() => {
 
   function clear() {
     localStorage.removeItem(KEY);
+    localStorage.removeItem(SEEDED_FLAG);
   }
 
-  // Auto-save on state changes
+  /** True if seedDemoData has already run at least once on this device */
+  function hasBeenSeeded() {
+    return !!localStorage.getItem(SEEDED_FLAG);
+  }
+
+  /** Call after seedDemoData completes so it never re-runs */
+  function markSeeded() {
+    localStorage.setItem(SEEDED_FLAG, '1');
+  }
+
+  // Auto-save on every state change
   State.subscribe(() => save());
 
-  return { save, load, clear };
+  return { save, load, clear, hasBeenSeeded, markSeeded };
 })();

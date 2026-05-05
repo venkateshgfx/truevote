@@ -1,5 +1,5 @@
 /**
- * LivePoll Secure — App Entry Point
+ * SlideMeter — App Entry Point
  * Navigation, Toast system, initialization
  */
 
@@ -125,15 +125,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ── Restore localStorage snapshot ────────────────────────────────────────
   DB.load();
 
-  // ── Seed demo data if first run ──────────────────────────────────────────
+  // ── Seed demo data ONLY on true first run ────────────────────────────────
   const state = State.get();
-  if (!state.presentations || state.presentations.length === 0) {
-    // Migrate old flat slides if they exist, otherwise seed fresh demo
-    const existingSlides = state.slides && state.slides.length > 0 ? state.slides : null;
+  if (!DB.hasBeenSeeded() && (!state.presentations || state.presentations.length === 0)) {
+    // Genuine first run — inject demo presentation
+    const existingSlides = state.slides?.length > 0 ? state.slides : null;
     seedDemoData(existingSlides);
-    // session code is generated per-presentation inside seedDemoData
-  } else if (!state.activePresentationId && state.presentations.length > 0) {
-    // Has presentations but no active one set — restore the first
+    DB.markSeeded(); // prevent re-seeding on every refresh
+  } else if (state.presentations?.length > 0 && !state.activePresentationId) {
+    // Has presentations but no active one — restore first
     State.setActivePresentation(state.presentations[0].id);
   }
 
@@ -212,7 +212,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       setTimeout(_fetchAndSyncParticipantState, 2000);
     }
 
-    console.log('✅ Connected to LivePoll backend — server-side duplicate prevention active');
+    console.log('✅ Connected to SlideMeter backend — server-side duplicate prevention active');
   } else {
     console.warn('⚠️  Backend not reachable — running in localStorage-only mode. Duplicate prevention limited to same browser.');
   }
@@ -294,7 +294,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   ███████╗██║ ╚████╔╝ ███████╗██║     ╚██████╔╝███████╗███████╗
   ╚══════╝╚═╝  ╚═══╝  ╚══════╝╚═╝      ╚═════╝ ╚══════╝╚══════╝
   
-  LivePoll Secure v1.0 — Enterprise Audience Engagement Platform
+  SlideMeter v1.0 — Real-Time Audience Polling Platform
   Built per PRD specification — Zero duplicate votes guaranteed.
   `);
 });
