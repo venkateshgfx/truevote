@@ -42,22 +42,23 @@ const Toast = (() => {
 
 const App = (() => {
   const screens = {
-    auth: { id: 'screen-auth', render: () => Auth.render() },
-    editor: { id: 'screen-editor', render: () => Editor.render() },
+    auth:         { id: 'screen-auth',         render: () => Auth.render() },
+    dashboard:    { id: 'screen-dashboard',    render: () => Dashboard.render() },
+    editor:       { id: 'screen-editor',       render: () => Editor.render() },
     presentation: { id: 'screen-presentation', render: () => Presentation.render() },
-    participant: { id: 'screen-participant', render: () => Participant.render() },
+    participant:  { id: 'screen-participant',  render: () => Participant.render() },
   };
 
   function navigate(screenName) {
     const state = State.get();
 
-    // Guard: redirect to auth if no user (except for auth itself)
+    // Guard: redirect to auth if no user
     if (screenName !== 'auth' && !state.user) {
       screenName = 'auth';
     }
 
-    // Guard: redirect participant to auth if no user
-    if (screenName === 'editor' && state.user?.role === 'participant') {
+    // Guard: participants can only see participant/auth screens
+    if ((screenName === 'editor' || screenName === 'dashboard') && state.user?.role === 'participant') {
       Toast.show('Presenter access required', 'error');
       return;
     }
@@ -74,6 +75,9 @@ const App = (() => {
     });
 
     State.set({ currentScreen: screenName }, false);
+
+    // Activate Lucide icons on the newly rendered screen
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 
     // Handle fullscreen for presentation
     if (screenName === 'presentation') {
@@ -121,11 +125,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ── Restore localStorage snapshot ────────────────────────────────────────
   DB.load();
 
-  // ── Seed demo slides if first run on this device ─────────────────────────
+  // ── Seed demo data if first run ──────────────────────────────────────────
   const state = State.get();
-  if (!state.slides || state.slides.length === 0) {
-    seedDemoData();
-    if (!codeFromUrl) State.set({ sessionCode: generateSessionCode() });
+  if (!state.presentations || state.presentations.length === 0) {
+    // Migrate old flat slides if they exist, otherwise seed fresh demo
+    const existingSlides = state.slides && state.slides.length > 0 ? state.slides : null;
+    seedDemoData(existingSlides);
+    // session code is generated per-presentation inside seedDemoData
+  } else if (!state.activePresentationId && state.presentations.length > 0) {
+    // Has presentations but no active one set — restore the first
+    State.setActivePresentation(state.presentations[0].id);
   }
 
   // ── Initialize ThemeManager (after DB.load so stored themes are available) ──
@@ -240,11 +249,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ── Navigate to correct starting screen ──────────────────────────────────
   const currentUser = State.get().user;
   if (currentUser) {
-    // If user is already logged in, restore their screen
-    App.navigate(State.get().currentScreen || (currentUser.role === 'presenter' ? 'editor' : 'participant'));
+    // Restore presenter to dashboard (not editor) on refresh
+    let restoreScreen = State.get().currentScreen;
+    if (currentUser.role === 'presenter' && (!restoreScreen || restoreScreen === 'editor')) {
+      restoreScreen = 'dashboard';
+    } else if (currentUser.role === 'participant') {
+      restoreScreen = 'participant';
+    }
+    App.navigate(restoreScreen || 'auth');
   } else if (mode === 'participant') {
-    App.navigate('auth');
-    setTimeout(() => Auth._switchTab('participant'), 100);
+    // Participant join link — show join screen directly
+    Auth.renderParticipantJoin();
+    const screenAuth = document.getElementById('screen-auth');
+    if (screenAuth) screenAuth.classList.add('active');
   } else {
     App.navigate('auth');
   }

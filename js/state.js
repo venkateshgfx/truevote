@@ -10,15 +10,17 @@ const OPTION_COLORS = [
 
 const State = (() => {
   let _state = {
-    currentScreen: 'auth',   // auth | editor | presentation | participant
-    user: null,               // { email, ldapId, userHash, role }
+    currentScreen: 'auth',
+    user: null,
     sessionCode: null,
     slides: [],
     activeSlideIndex: 0,
-    votes: {},                // { [slideId]: { [userHash]: [optionIndices] } }
-    pollStatus: {},           // { [slideId]: 'pending' | 'open' | 'closed' }
+    votes: {},
+    pollStatus: {},
+    presentations: [],         // [{ id, name, slides, votes, pollStatus, createdAt, updatedAt }]
+    activePresentationId: null,
     presSettings: {
-      displayMode: 'percent', // 'percent' | 'count'
+      displayMode: 'percent',
       showQR: true,
       showResults: true,
       showInstructionBar: true,
@@ -59,7 +61,16 @@ const State = (() => {
     set(patch, broadcast = true) {
       Object.assign(_state, patch);
       if (broadcast) _broadcast(patch);
-      
+
+      // Auto-sync slides/votes/pollStatus/sessionCode back into active presentation
+      if ((patch.slides || patch.votes || patch.pollStatus || patch.sessionCode) && _state.activePresentationId) {
+        _state.presentations = _state.presentations.map(p =>
+          p.id === _state.activePresentationId
+            ? { ...p, slides: _state.slides, votes: _state.votes, pollStatus: _state.pollStatus, sessionCode: _state.sessionCode, updatedAt: new Date().toISOString() }
+            : p
+        );
+      }
+
       // Push navigation to server if presenter changed the slide
       if (patch.activeSlideIndex !== undefined && typeof API !== 'undefined' && _state.user?.role === 'presenter') {
         API.pushNavigate(patch.activeSlideIndex);
@@ -129,7 +140,7 @@ const State = (() => {
     },
 
     // ── Voting ──
-    castVote(slideId, userHash, optionIndices, email, ldapId) {
+    castVote(slideId, userHash, optionIndices, email) {
       const slideVotes = { ...(_state.votes[slideId] || {}) };
 
       // UNIQUE constraint enforcement (DB-level simulation)
@@ -137,7 +148,7 @@ const State = (() => {
         return { success: false, reason: 'DUPLICATE_VOTE' };
       }
 
-      slideVotes[userHash] = { options: optionIndices, ts: new Date().toISOString(), email, ldapId };
+      slideVotes[userHash] = { options: optionIndices, ts: new Date().toISOString(), email };
       const newVotes = { ..._state.votes, [slideId]: slideVotes };
       this.set({ votes: newVotes });
       return { success: true };
@@ -165,27 +176,106 @@ const State = (() => {
       if (typeof API !== 'undefined') API.pushPollStatus(slideId, status);
     },
 
+    // ── Presentations management ──
+    createPresentation(name) {
+      const id = `pres_${Date.now()}`;
+      const sessionCode = generateSessionCode(); // unique per presentation
+      const pres = {
+        id,
+        name: name || 'New Presentation',
+        sessionCode,
+        slides: [],
+        votes: {},
+        pollStatus: {},
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      const presentations = [..._state.presentations, pres];
+      this.set({ presentations });
+      this.setActivePresentation(id);
+      return pres;
+    },
+
+    renamePresentation(id, name) {
+      const presentations = _state.presentations.map(p =>
+        p.id === id ? { ...p, name, updatedAt: new Date().toISOString() } : p
+      );
+      this.set({ presentations });
+    },
+
+    deletePresentation(id) {
+      const presentations = _state.presentations.filter(p => p.id !== id);
+      this.set({ presentations });
+      // If deleted the active one, switch to another
+      if (_state.activePresentationId === id) {
+        if (presentations.length > 0) {
+          this.setActivePresentation(presentations[0].id);
+        } else {
+          this.set({ activePresentationId: null, slides: [], votes: {}, pollStatus: {}, activeSlideIndex: 0 });
+        }
+      }
+    },
+
+    setActivePresentation(id) {
+      const pres = _state.presentations.find(p => p.id === id);
+      if (!pres) return;
+      // Each presentation has its own session code
+      const sessionCode = pres.sessionCode || generateSessionCode();
+      // Persist generated code back if it was missing
+      if (!pres.sessionCode) {
+        _state.presentations = _state.presentations.map(p =>
+          p.id === id ? { ...p, sessionCode } : p
+        );
+      }
+      this.set({
+        activePresentationId: id,
+        sessionCode,
+        slides: pres.slides || [],
+        votes: pres.votes || {},
+        pollStatus: pres.pollStatus || {},
+        activeSlideIndex: 0,
+      });
+      // Register new session code with server
+      if (typeof API !== 'undefined') API.registerSession(sessionCode);
+    },
+
     // ── Export ──
     exportCSV(slideId) {
       const slide = _state.slides.find(s => s.id === slideId);
       if (!slide) return '';
-      const rows = [['User Email', 'LDAP ID', 'Slide ID', 'Question', 'Selected Options', 'Timestamp (UTC)']];
+      const rows = [['User Email', 'Slide ID', 'Question', 'Selected Options', 'Timestamp (UTC)']];
       const slideVotes = _state.votes[slideId] || {};
       Object.entries(slideVotes).forEach(([hash, v]) => {
-        const opts = v.options.map(i => slide.options[i]?.text || '').join('; ');
-        const email = v.email || 'Hidden';
-        const ldapId = v.ldapId || 'Hidden';
-        rows.push([email, ldapId, slideId, `"${slide.question}"`, `"${opts}"`, v.ts]);
+        const opts  = v.options.map(i => slide.options[i]?.text || '').join('; ');
+        const email = v.email || 'Anonymous';
+        rows.push([email, slideId, `"${slide.question}"`, `"${opts}"`, v.ts]);
       });
       return rows.map(r => r.join(',')).join('\n');
     },
   };
 })();
 
-// ── Hash Generator ──
-function generateUserHash(email, ldapId) {
-  const raw = `${email.toLowerCase()}:${ldapId}`;
-  return btoa(raw).replace(/=/g, '');
+// ── User Hash Generator ──
+// Produces a strong session-scoped hash: same email always maps to the same
+// hash within one session, but different sessions give different hashes.
+// Uses a MurmurHash3-inspired 64-bit approach for collision resistance.
+function generateUserHash(email, sessionCode = '') {
+  const raw = `${email.toLowerCase().trim()}:${sessionCode}`;
+  let h1 = 0xdeadbeef ^ raw.length;
+  let h2 = 0x41c6ce57 ^ raw.length;
+  for (let i = 0; i < raw.length; i++) {
+    const ch = raw.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1  = Math.imul(h1 ^ (h1 >>> 16), 2246822507);
+  h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2  = Math.imul(h2 ^ (h2 >>> 16), 2246822507);
+  h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  // Combine to 64-bit hex string (16 chars)
+  const hi = (h2 >>> 0).toString(16).padStart(8, '0');
+  const lo = (h1 >>> 0).toString(16).padStart(8, '0');
+  return hi + lo;
 }
 
 // ── Session Code Generator ──
@@ -194,18 +284,19 @@ function generateSessionCode() {
   return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
 }
 
-// ── Seed initial demo slides ──
-function seedDemoData() {
-  const demoSlides = [
+// ── Seed initial demo data ──
+function seedDemoData(existingSlides) {
+  const now = new Date().toISOString();
+  const demoSlides = existingSlides || [
     {
       id: 'slide_1',
       question: 'What is your primary programming language?',
       options: [
         { text: 'TypeScript', color: OPTION_COLORS[0] },
-        { text: 'Python', color: OPTION_COLORS[1] },
-        { text: 'Go', color: OPTION_COLORS[2] },
-        { text: 'Rust', color: OPTION_COLORS[3] },
-        { text: 'Java', color: OPTION_COLORS[4] },
+        { text: 'Python',     color: OPTION_COLORS[1] },
+        { text: 'Go',         color: OPTION_COLORS[2] },
+        { text: 'Rust',       color: OPTION_COLORS[3] },
+        { text: 'Java',       color: OPTION_COLORS[4] },
       ],
       multiSelect: false, maxPicks: 1, timerEnabled: true, timerSeconds: 30,
       locked: false, bgColor: '#0f172a', bgImage: null, logoImage: null,
@@ -215,9 +306,9 @@ function seedDemoData() {
       id: 'slide_2',
       question: 'Which cloud providers does your team use? (Select all that apply)',
       options: [
-        { text: 'AWS', color: OPTION_COLORS[0] },
+        { text: 'AWS',        color: OPTION_COLORS[0] },
         { text: 'Google Cloud', color: OPTION_COLORS[2] },
-        { text: 'Azure', color: OPTION_COLORS[3] },
+        { text: 'Azure',      color: OPTION_COLORS[3] },
         { text: 'On-Premise', color: OPTION_COLORS[4] },
       ],
       multiSelect: true, maxPicks: 3, timerEnabled: false, timerSeconds: 60,
@@ -228,10 +319,10 @@ function seedDemoData() {
       id: 'slide_3',
       question: 'Rate your confidence in our Q3 roadmap delivery',
       options: [
-        { text: '🔥 Very Confident', color: OPTION_COLORS[3] },
+        { text: '🔥 Very Confident',    color: OPTION_COLORS[3] },
         { text: '👍 Somewhat Confident', color: OPTION_COLORS[0] },
-        { text: '😐 Neutral', color: OPTION_COLORS[4] },
-        { text: '😟 Concerned', color: OPTION_COLORS[6] },
+        { text: '😐 Neutral',            color: OPTION_COLORS[4] },
+        { text: '😟 Concerned',          color: OPTION_COLORS[6] },
       ],
       multiSelect: false, maxPicks: 1, timerEnabled: false, timerSeconds: 60,
       locked: false, bgColor: '#064e3b', bgImage: null, logoImage: null,
@@ -239,47 +330,61 @@ function seedDemoData() {
     },
   ];
 
-  const votes = { slide_1: {}, slide_2: {}, slide_3: {} };
-  const pollStatus = { slide_1: 'open', slide_2: 'pending', slide_3: 'pending' };
+  const votes = existingSlides ? {} : { slide_1: {}, slide_2: {}, slide_3: {} };
+  const pollStatus = existingSlides ? {} : { slide_1: 'open', slide_2: 'pending', slide_3: 'pending' };
 
-  // Seed some demo votes
-  const demoVoters = [
-    ['alice@corp.com','ldap001'], ['bob@corp.com','ldap002'],
-    ['carol@corp.com','ldap003'], ['dave@corp.com','ldap004'],
-    ['eve@corp.com','ldap005'],   ['frank@corp.com','ldap006'],
-  ];
-  const s1opts = [[0],[1],[1],[2],[0],[3]];
-  demoVoters.forEach(([e,l], i) => {
-    const h = generateUserHash(e,l);
-    votes['slide_1'][h] = { options: s1opts[i], ts: new Date().toISOString() };
-  });
+  // Seed some demo votes if fresh
+  if (!existingSlides) {
+    const demoVoters = [
+      'alice@corp.com', 'bob@corp.com', 'carol@corp.com',
+      'dave@corp.com',  'eve@corp.com',  'frank@corp.com',
+    ];
+    const s1opts = [[0],[1],[1],[2],[0],[3]];
+    demoVoters.forEach((email, i) => {
+      const h = generateUserHash(email, presId); // use presId as session salt
+      votes['slide_1'][h] = { options: s1opts[i], ts: now, email };
+    });
+  }
 
-  State.set({ 
-    slides: demoSlides, 
-    votes, 
+  const presId = `pres_${Date.now()}`;
+  const demoSessionCode = generateSessionCode();
+  const demoPres = {
+    id: presId,
+    name: existingSlides ? 'My Presentation' : 'Demo: Tech Team Pulse',
+    sessionCode: demoSessionCode,
+    slides: demoSlides,
+    votes,
     pollStatus,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  const themes = [
+    {
+      id: 'theme_default',
+      name: 'Default Blue',
+      logo: null, bgImage: null,
+      bgColor: '#1a2547', textColor: '#ffffff', fontFamily: 'Inter',
+      visColours: ['#ff3366', '#33ffcc', '#ff9966', '#333366', '#cc3366']
+    },
+    {
+      id: 'theme_vibrant',
+      name: 'Vibrant Night',
+      logo: null, bgImage: null,
+      bgColor: '#0f172a', textColor: '#f8fafc', fontFamily: 'Inter',
+      visColours: ['#f43f5e', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b']
+    }
+  ];
+
+  State.set({
+    presentations: [demoPres],
+    activePresentationId: presId,
+    sessionCode: demoSessionCode,
+    slides: demoSlides,
+    votes,
+    pollStatus,
+    activeSlideIndex: 0,
     activeThemeId: 'theme_default',
-    themes: [
-      {
-        id: 'theme_default',
-        name: 'AhaSlides (Default)',
-        logo: null,
-        bgImage: null,
-        bgColor: '#1a2547',
-        textColor: '#ffffff',
-        fontFamily: 'Inter',
-        visColours: ['#ff3366', '#33ffcc', '#ff9966', '#333366', '#cc3366']
-      },
-      {
-        id: 'theme_vibrant',
-        name: 'Vibrant Night',
-        logo: null,
-        bgImage: null,
-        bgColor: '#0f172a',
-        textColor: '#f8fafc',
-        fontFamily: 'Plus Jakarta Sans',
-        visColours: ['#f43f5e', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b']
-      }
-    ]
+    themes,
   });
 }

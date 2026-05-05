@@ -23,14 +23,14 @@ const API = (() => {
   function isAvailable() { return _serverAvailable === true; }
 
   // ── Vote (server-side duplicate prevention) ──────────────────────────────
-  async function castVote(slideId, userHash, options, email, ldapId) {
+  async function castVote(slideId, userHash, options, email) {
     if (!isAvailable())
       return { success: false, reason: 'SERVER_UNAVAILABLE' };
     try {
       const res = await fetch('/api/vote', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slideId, userHash, options, email, ldapId }),
+        body: JSON.stringify({ slideId, userHash, options, email }),
       });
       return await res.json();
     } catch {

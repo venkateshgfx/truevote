@@ -4,7 +4,7 @@
  */
 
 const DB = (() => {
-  const KEY = 'livepoll_secure_db_v1';
+  const KEY = 'livepoll_secure_db_v2'; // v2 includes presentations
 
   function save() {
     try {
@@ -19,6 +19,8 @@ const DB = (() => {
         presSettings: s.presSettings,
         user: s.user,
         currentScreen: s.currentScreen,
+        presentations: s.presentations,
+        activePresentationId: s.activePresentationId,
       }));
     } catch(e) { /* storage quota */ }
   }

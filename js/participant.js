@@ -328,20 +328,20 @@ const Participant = (() => {
       return;
     }
 
-    const { userHash, email, ldapId } = state.user;
+    const { userHash, email } = state.user;
     let result;
 
     if (API.isAvailable()) {
       // ── Server-side duplicate check (works across incognito / devices) ──
-      result = await API.castVote(slide.id, userHash, selectedOptions, email, ldapId);
+      result = await API.castVote(slide.id, userHash, selectedOptions, email);
 
       if (result.success) {
         // Mirror into local state so UI updates immediately
-        State.castVote(slide.id, userHash, selectedOptions, email, ldapId);
+        State.castVote(slide.id, userHash, selectedOptions, email);
       }
     } else {
       // ── Fallback: localStorage-only duplicate check ──────────────────────
-      result = State.castVote(slide.id, userHash, selectedOptions, email, ldapId);
+      result = State.castVote(slide.id, userHash, selectedOptions, email);
     }
 
     if (result.success) {

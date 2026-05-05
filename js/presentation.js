@@ -62,10 +62,10 @@ const Presentation = (() => {
 
         <div style="margin-top:auto; display:flex; flex-direction:column; gap:var(--sp-3)">
           <button class="btn btn-danger btn-sm sidebar-action-btn" onclick="Presentation._resetSlide()">
-            🗑 Reset Slide Data
+            <i data-lucide="trash-2" class="icon-sm"></i> Reset Slide Data
           </button>
           <button class="btn btn-secondary btn-sm sidebar-action-btn" onclick="Presentation._exit()">
-            ← Exit Presentation
+            <i data-lucide="arrow-left" class="icon-sm"></i> Exit Presentation
           </button>
         </div>
       </div>
@@ -74,7 +74,7 @@ const Presentation = (() => {
         <div class="pres-logo-zone">
           <img class="pres-logo hidden" id="pres-logo" alt="Logo" />
           <button class="pres-exit-btn" onclick="Presentation._exit()" title="Exit Presentation (ESC)">
-            ✕ Exit
+            <i data-lucide="x" class="icon-sm"></i> Exit
           </button>
         </div>
 
@@ -85,7 +85,9 @@ const Presentation = (() => {
             <div class="pres-chart-zone" id="pres-chart-zone"></div>
           </div>
           <div class="pres-qr-sidebar" id="pres-right">
-            <button class="pres-qr-close" id="pres-qr-close" onclick="Presentation._toggleQR(false)" title="Hide QR">✕</button>
+            <button class="pres-qr-close" id="pres-qr-close" onclick="Presentation._toggleQR(false)" title="Hide QR">
+              <i data-lucide="x" class="icon-sm"></i>
+            </button>
             <div class="pres-qr-code-wrap">
               <div class="pres-qr-code-box" id="pres-qr-box"></div>
             </div>
@@ -110,11 +112,17 @@ const Presentation = (() => {
 
         <!-- Navigation (Auto-hides) -->
         <div class="pres-nav" id="pres-nav">
-          <button class="pres-nav-btn" id="pres-prev-btn" onclick="Presentation._prevSlide()" title="Previous (Left Arrow)">◀</button>
+          <button class="pres-nav-btn" id="pres-prev-btn" onclick="Presentation._prevSlide()" title="Previous (Left Arrow)">
+            <i data-lucide="chevron-left" class="icon-lg"></i>
+          </button>
           <span class="pres-nav-slide-counter" id="pres-nav-counter">1 / ${state.slides.length}</span>
-          <button class="pres-nav-btn" id="pres-next-btn" onclick="Presentation._nextSlide()" title="Next (Right Arrow or Space)">▶</button>
+          <button class="pres-nav-btn" id="pres-next-btn" onclick="Presentation._nextSlide()" title="Next (Right Arrow or Space)">
+            <i data-lucide="chevron-right" class="icon-lg"></i>
+          </button>
           <div class="pres-nav-separator"></div>
-          <button class="pres-nav-poll-btn start" id="pres-poll-btn" onclick="Presentation._togglePoll()" title="Toggle Poll (P)">▶ Start Poll</button>
+          <button class="pres-nav-poll-btn start" id="pres-poll-btn" onclick="Presentation._togglePoll()" title="Toggle Poll (P)">
+            <i data-lucide="play" class="icon-sm"></i> Start Poll
+          </button>
         </div>
       </div>
     `;
@@ -122,6 +130,7 @@ const Presentation = (() => {
     _updateSlide();
     _setupKeyboard();
     _setupAutoHide();
+    if (typeof lucide !== 'undefined') lucide.createIcons();
   }
 
   function _updateSlide() {
@@ -198,19 +207,20 @@ const Presentation = (() => {
     const badgeText = document.getElementById('pres-poll-badge-text');
     if (badge && badgeText) {
       badge.className = `pres-poll-status ${status}`;
-      badgeText.textContent = status === 'open' ? '🟢 Poll Open' : status === 'closed' ? '🔴 Poll Closed' : '⏳ Waiting to start';
+      badgeText.textContent = status === 'open' ? 'Poll Open' : status === 'closed' ? 'Poll Closed' : 'Waiting to start';
     }
 
     // Nav poll button
     const pollBtn = document.getElementById('pres-poll-btn');
     if (pollBtn) {
       if (status === 'open') {
-        pollBtn.textContent = '⏹ Stop Poll';
+        pollBtn.innerHTML = '<i data-lucide="square" class="icon-sm"></i> Stop Poll';
         pollBtn.className = 'pres-nav-poll-btn stop';
       } else {
-        pollBtn.textContent = '▶ Start Poll';
+        pollBtn.innerHTML = '<i data-lucide="play" class="icon-sm"></i> Start Poll';
         pollBtn.className = 'pres-nav-poll-btn start';
       }
+      if (typeof lucide !== 'undefined') lucide.createIcons({ nodes: [pollBtn] });
     }
 
     // Nav buttons

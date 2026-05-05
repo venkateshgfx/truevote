@@ -19,14 +19,19 @@ const Editor = (() => {
       <!-- TOP BAR -->
       <header class="editor-topbar">
         <div class="topbar-left">
+          <button class="btn btn-ghost btn-sm btn-icon" onclick="App.navigate('dashboard')" title="Back to Dashboard">
+            <i data-lucide="arrow-left" class="icon-md"></i>
+          </button>
           <div class="topbar-logo">
-            <div class="topbar-logo-icon">📊</div>
+            <div class="topbar-logo-icon"><i data-lucide="bar-chart-2" class="icon-md" style="color:#fff"></i></div>
             LivePoll<span style="color:var(--accent-primary)">Secure</span>
           </div>
           <div class="topbar-session">
             <span class="text-muted text-sm">Session:</span>
             <div class="session-code-badge" id="topbar-session-code" onclick="Editor._copyCode()" title="Click to copy">${state.sessionCode || '------'}</div>
-            <button class="btn btn-ghost btn-sm btn-icon" onclick="QRHelper.showShareModal()" title="Show QR code &amp; join link" style="font-size:16px">📡</button>
+            <button class="btn btn-ghost btn-sm btn-icon" onclick="QRHelper.showShareModal()" title="Show QR code &amp; join link">
+              <i data-lucide="qr-code" class="icon-md"></i>
+            </button>
             <div class="participant-count">
               <div class="participant-dot"></div>
               <span id="topbar-participant-count">${_getTotalUniqueVoters(state)}</span> voters
@@ -37,14 +42,22 @@ const Editor = (() => {
           <span class="badge badge-accent">Slide ${state.activeSlideIndex + 1} / ${state.slides.length}</span>
         </div>
         <div class="topbar-right">
-          <button class="btn btn-ghost btn-sm" onclick="Editor._exportCSV()" title="Export CSV">📥 Export CSV</button>
-          <button class="btn btn-secondary btn-sm" onclick="QRHelper.showShareModal()" title="Invite participants via QR / link">📡 Share &amp; QR</button>
-          <button class="btn btn-primary btn-sm" onclick="Editor._present()">▶ Present</button>
+          <button class="btn btn-ghost btn-sm" onclick="Editor._exportCSV()" title="Export CSV">
+            <i data-lucide="download" class="icon-sm"></i> Export CSV
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="QRHelper.showShareModal()" title="Invite participants via QR / link">
+            <i data-lucide="share-2" class="icon-sm"></i> Share &amp; QR
+          </button>
+          <button class="btn btn-primary btn-sm" onclick="Editor._present()">
+            <i data-lucide="play" class="icon-sm"></i> Present
+          </button>
           <div class="user-menu" title="${user?.email}">
             <div class="user-avatar">${initials}</div>
             <span class="text-sm text-secondary">${user?.email?.split('@')[0] || 'Presenter'}</span>
           </div>
-          <button class="btn btn-ghost btn-sm" onclick="App.logout()" title="Sign out" style="color:var(--accent-danger);gap:4px">🚪 Sign Out</button>
+          <button class="btn btn-ghost btn-sm" onclick="App.logout()" title="Sign out" style="color:var(--accent-danger)">
+            <i data-lucide="log-out" class="icon-sm"></i> Sign Out
+          </button>
         </div>
       </header>
 
@@ -68,8 +81,12 @@ const Editor = (() => {
         <main class="editor-canvas" id="editor-canvas">
           <div class="canvas-controls-top">
             <span class="canvas-slide-label">Slide ${state.activeSlideIndex + 1} Preview</span>
-            <button class="btn btn-ghost btn-sm" onclick="Editor._clearResults()" title="Clear all votes for this slide">🗑 Clear Results</button>
-            <button class="btn btn-secondary btn-sm" onclick="App.navigate('participant')" title="Preview participant view">👁 Participant View</button>
+            <button class="btn btn-ghost btn-sm" onclick="Editor._clearResults()" title="Clear all votes for this slide">
+              <i data-lucide="trash-2" class="icon-sm"></i> Clear Results
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="App.navigate('participant')" title="Preview participant view">
+              <i data-lucide="eye" class="icon-sm"></i> Participant View
+            </button>
           </div>
 
           <div class="canvas-wrapper" id="canvas-wrapper">
@@ -83,7 +100,8 @@ const Editor = (() => {
               <button class="canvas-overlay-btn" id="canvas-poll-btn" onclick="Editor._togglePoll()"></button>
             </div>
             <div class="canvas-vote-count" id="canvas-vote-count">
-              🗳 <span id="canvas-vote-num">0</span> votes
+              <i data-lucide="check-square" class="icon-sm" style="opacity:0.7"></i>
+              <span id="canvas-vote-num">0</span> votes
             </div>
           </div>
 
@@ -114,7 +132,9 @@ const Editor = (() => {
           <div id="inspector-slide-pane" class="${currentTab === 'settings' ? 'hidden' : ''}">
             <!-- CONTENT -->
             <div class="inspector-section">
-              <div class="inspector-section-title">📝 Content</div>
+              <div class="inspector-section-title">
+                <i data-lucide="file-text" class="icon-sm"></i> Content
+              </div>
             <div class="form-group">
               <label class="label" for="prop-question">Question</label>
               <textarea id="prop-question" class="textarea" rows="3"
@@ -122,7 +142,9 @@ const Editor = (() => {
                 placeholder="Type your question here…"></textarea>
             </div>
 
-            <div class="inspector-section-title" style="margin-top:var(--sp-4)">🎯 Options</div>
+            <div class="inspector-section-title" style="margin-top:var(--sp-4)">
+              <i data-lucide="list" class="icon-sm"></i> Options
+            </div>
             <div class="options-list" id="options-list"></div>
             <button class="btn btn-ghost btn-sm add-option-btn" onclick="Editor._addOption()">
               ＋ Add Option
@@ -131,7 +153,9 @@ const Editor = (() => {
 
           <!-- LOGIC -->
           <div class="inspector-section">
-            <div class="inspector-section-title">⚙️ Logic</div>
+            <div class="inspector-section-title">
+              <i data-lucide="sliders" class="icon-sm"></i> Logic
+            </div>
 
             <div class="toggle-wrap">
               <div>
@@ -193,16 +217,18 @@ const Editor = (() => {
             </div>
             <!-- LAYOUT -->
             <div class="inspector-section">
-              <div class="inspector-section-title">📊 Chart Layout</div>
+              <div class="inspector-section-title">
+                <i data-lucide="layout-dashboard" class="icon-sm"></i> Chart Layout
+              </div>
               <div class="layout-picker" id="layout-picker">
                 <button class="layout-option active" data-layout="bars" onclick="Editor._setLayout('bars')">
-                  <span class="layout-option-icon">📊</span>Bars
+                  <span class="layout-option-icon"><i data-lucide="bar-chart-2" class="icon-md"></i></span>Bars
                 </button>
                 <button class="layout-option" data-layout="donut" onclick="Editor._setLayout('donut')">
-                  <span class="layout-option-icon">🍩</span>Donut
+                  <span class="layout-option-icon"><i data-lucide="pie-chart" class="icon-md"></i></span>Donut
                 </button>
                 <button class="layout-option" data-layout="pie" onclick="Editor._setLayout('pie')">
-                  <span class="layout-option-icon">🥧</span>Pie
+                  <span class="layout-option-icon"><i data-lucide="chart-pie" class="icon-md"></i></span>Pie
                 </button>
             </div>
           </div>
@@ -212,7 +238,9 @@ const Editor = (() => {
           <div id="inspector-settings-pane" class="${currentTab === 'slide' ? 'hidden' : ''}">
             <!-- DESIGN -->
             <div class="inspector-section">
-              <div class="inspector-section-title">🎨 Design</div>
+              <div class="inspector-section-title">
+                <i data-lucide="palette" class="icon-sm"></i> Design
+              </div>
 
               <div class="form-group">
                 <label class="label">Current Theme</label>
@@ -220,7 +248,9 @@ const Editor = (() => {
                   <select class="select select-sm" style="flex:1" onchange="ThemeManager.applyTheme(this.value)">
                     ${(state.themes || []).map(t => `<option value="${t.id}" ${t.id === state.activeThemeId ? 'selected' : ''}>${t.name}</option>`).join('')}
                   </select>
-                  <button class="btn btn-ghost btn-sm btn-icon" onclick="ThemeManager.openModal(State.get().activeThemeId)" title="Edit theme">✏️</button>
+                  <button class="btn btn-ghost btn-sm btn-icon" onclick="ThemeManager.openModal(State.get().activeThemeId)" title="Edit theme">
+                    <i data-lucide="pencil" class="icon-sm"></i>
+                  </button>
                   <button class="btn btn-secondary btn-sm" onclick="ThemeManager.openModal()">＋ New</button>
                 </div>
               </div>
@@ -243,7 +273,8 @@ const Editor = (() => {
                 <div class="upload-area" id="bg-upload-area">
                   <input type="file" accept="image/*" onchange="Editor._uploadGlobalImage(event, 'themeBgImage')" id="bg-image-input" />
                   <div class="upload-placeholder" id="bg-placeholder">
-                    📷 Click to upload background image
+                    <i data-lucide="image" class="icon-xl" style="opacity:0.4;display:block;margin:0 auto 8px"></i>
+                    Click to upload background image
                   </div>
                   <img class="upload-preview-img hidden" id="bg-preview" alt="Background" />
                 </div>
@@ -254,7 +285,8 @@ const Editor = (() => {
                 <div class="upload-area" id="logo-upload-area">
                   <input type="file" accept="image/*" onchange="Editor._uploadGlobalImage(event, 'themeLogo')" id="logo-image-input" />
                   <div class="upload-placeholder" id="logo-placeholder">
-                    🏢 Click to upload company logo
+                    <i data-lucide="building-2" class="icon-xl" style="opacity:0.4;display:block;margin:0 auto 8px"></i>
+                    Click to upload company logo
                   </div>
                   <img class="upload-preview-img hidden" id="logo-preview" alt="Logo" />
                 </div>
@@ -263,7 +295,9 @@ const Editor = (() => {
 
             <!-- PRESENTATION SETTINGS -->
             <div class="inspector-section">
-              <div class="inspector-section-title">📺 Presentation Screen</div>
+              <div class="inspector-section-title">
+                <i data-lucide="monitor" class="icon-sm"></i> Presentation Screen
+              </div>
               <div class="form-group toggle-wrap">
                 <span class="toggle-label">Show QR Sidebar</span>
                 <label class="toggle">
@@ -289,6 +323,7 @@ const Editor = (() => {
     _renderSlideList();
     _updateCanvas();
     _populateInspector();
+    if (typeof lucide !== 'undefined') lucide.createIcons();
   }
 
   // ── Slide Navigator ──
@@ -308,13 +343,18 @@ const Editor = (() => {
         <div class="slide-thumb-number">${i + 1}</div>
         <div class="slide-thumb-status ${status}"></div>
         <div class="slide-thumb-question">${_truncate(slide.question, 50)}</div>
-        <div style="font-size:9px;color:var(--text-muted);">🗳 ${votes}</div>
-        <button class="slide-thumb-delete" onclick="event.stopPropagation(); Editor._deleteSlide(${i})" title="Delete slide">✕</button>
+        <div style="font-size:9px;color:var(--text-muted);display:flex;align-items:center;gap:2px">
+          <i data-lucide="check-square" style="width:9px;height:9px"></i> ${votes}
+        </div>
+        <button class="slide-thumb-delete" onclick="event.stopPropagation(); Editor._deleteSlide(${i})" title="Delete slide">
+          <i data-lucide="x" style="width:10px;height:10px"></i>
+        </button>
       `;
       // Apply bg color
       el.style.background = slide.bgColor || '#1a2547';
       list.appendChild(el);
     });
+    if (typeof lucide !== 'undefined') lucide.createIcons({ nodes: Array.from(list.querySelectorAll('[data-lucide]')) });
   }
 
   // ── Canvas ──
@@ -365,9 +405,15 @@ const Editor = (() => {
     // Poll status button
     const status = state.pollStatus[slide.id] || 'pending';
     pollBtn.className = `canvas-overlay-btn poll-${status}`;
-    pollBtn.textContent = status === 'open' ? '🟢 Poll Open — Click to Stop'
-      : status === 'closed' ? '🔴 Poll Closed — Click to Reopen'
-      : '▶ Start Poll';
+    if (status === 'open') {
+      pollBtn.innerHTML = '<i data-lucide="circle-stop" class="icon-md"></i> Poll Open — Click to Stop';
+    } else if (status === 'closed') {
+      pollBtn.innerHTML = '<i data-lucide="rotate-ccw" class="icon-md"></i> Poll Closed — Click to Reopen';
+    } else {
+      pollBtn.innerHTML = '<i data-lucide="play" class="icon-md"></i> Start Poll';
+    }
+    if (typeof lucide !== 'undefined') lucide.createIcons({ nodes: [pollBtn] });
+
 
     // Vote count
     const total = State.getTotalVotes(slide.id);
