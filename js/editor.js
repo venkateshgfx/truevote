@@ -429,9 +429,14 @@ const Editor = (() => {
             onclick="event.stopPropagation(); Editor._moveSlide(${i}, 1)"
             ${i === total - 1 ? 'disabled' : ''}>&#9660;</button>
         </div>
-        <button class="slide-thumb-delete" onclick="event.stopPropagation(); Editor._deleteSlide(${i})" title="Delete slide">
-          <i data-lucide="x" style="width:10px;height:10px"></i>
-        </button>
+        <div class="slide-thumb-actions">
+          <button class="slide-thumb-action-btn" onclick="event.stopPropagation(); Editor._duplicateSlide(${i})" title="Duplicate slide">
+            <i data-lucide="copy" style="width:10px;height:10px"></i>
+          </button>
+          <button class="slide-thumb-delete" onclick="event.stopPropagation(); Editor._deleteSlide(${i})" title="Delete slide">
+            <i data-lucide="x" style="width:10px;height:10px"></i>
+          </button>
+        </div>
       `;
       // Apply bg color
       el.style.background = slide.bgColor || '#1a2547';
@@ -845,6 +850,22 @@ const Editor = (() => {
     Toast.show('Slide deleted', 'info');
   }
 
+  function _duplicateSlide(index) {
+    const state = State.get();
+    const original = state.slides[index];
+    if (!original) return;
+    // Deep clone and assign a new unique ID
+    const clone = JSON.parse(JSON.stringify(original));
+    clone.id = 'slide_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+    clone.question = (clone.question || '') + ' (Copy)';
+    // Insert after the original
+    const newSlides = [...state.slides];
+    newSlides.splice(index + 1, 0, clone);
+    State.set({ slides: newSlides, activeSlideIndex: index + 1 });
+    _refresh();
+    Toast.show('Slide duplicated', 'success');
+  }
+
   // ── Poll Control ──
   function _togglePoll() {
     const slide = State.getActiveSlide();
@@ -953,7 +974,7 @@ const Editor = (() => {
 
   return {
     render, _refresh,
-    _addSlide, _moveSlide, _deleteSlide,
+    _addSlide, _moveSlide, _deleteSlide, _duplicateSlide,
     _togglePoll, _clearResults, _present, _copyCode, _exportCSV,
     _updateProp, _updateOption, _addOption, _deleteOption,
     _setLayout, _onHexInput,

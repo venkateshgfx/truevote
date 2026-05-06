@@ -354,10 +354,32 @@ const State = (() => {
     exportCSV(slideId) {
       const slide = _state.slides.find(s => s.id === slideId);
       if (!slide) return '';
-      const rows = [['User Email', 'Slide ID', 'Question', 'Selected Options', 'Timestamp (UTC)']];
+      const slideType = slide.type || 'poll';
+
+      // Text and QR slides have no vote data
+      if (slideType === 'text' || slideType === 'qr') {
+        return 'No vote data for this slide type.\n';
+      }
+
       const slideVotes = _state.votes[slideId] || {};
+      if (Object.keys(slideVotes).length === 0) {
+        return 'No votes recorded for this slide.\n';
+      }
+
+      if (slideType === 'rating') {
+        const rows = [['User Email', 'Slide ID', 'Question', 'Rating (Stars)', 'Timestamp (UTC)']];
+        Object.entries(slideVotes).forEach(([hash, v]) => {
+          const starVal = (v.options?.[0] ?? -1) + 1; // convert 0-indexed to 1-5
+          const email = v.email || 'Anonymous';
+          rows.push([email, slideId, `"${slide.question}"`, starVal, v.ts]);
+        });
+        return rows.map(r => r.join(',')).join('\n');
+      }
+
+      // Default: poll slide
+      const rows = [['User Email', 'Slide ID', 'Question', 'Selected Options', 'Timestamp (UTC)']];
       Object.entries(slideVotes).forEach(([hash, v]) => {
-        const opts  = v.options.map(i => slide.options[i]?.text || '').join('; ');
+        const opts = (v.options || []).map(i => slide.options?.[i]?.text || `Option ${i+1}`).join('; ');
         const email = v.email || 'Anonymous';
         rows.push([email, slideId, `"${slide.question}"`, `"${opts}"`, v.ts]);
       });
