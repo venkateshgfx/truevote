@@ -94,6 +94,7 @@ const Presentation = (() => {
         <div class="pres-content">
           <div class="pres-left">
             <div class="pres-question" id="pres-question"></div>
+            <div class="pres-subtitle" id="pres-subtitle" style="display:none"></div>
             <div class="pres-chart-zone" id="pres-chart-zone"></div>
           </div>
           <div class="pres-qr-sidebar" id="pres-right">
@@ -179,6 +180,14 @@ const Presentation = (() => {
       qEl.textContent = slide.question || '';
       qEl.style.color = state.presSettings?.themeTextColor || '#ffffff';
       qEl.style.fontFamily = state.presSettings?.themeFontFamily || 'Inter';
+    }
+
+    // Subtitle
+    const subEl = document.getElementById('pres-subtitle');
+    if (subEl) {
+      subEl.textContent = slide.subtitle || '';
+      subEl.style.color = state.presSettings?.themeTextColor || '#ffffff';
+      subEl.style.display = slide.subtitle ? '' : 'none';
     }
 
     // Logo
@@ -380,10 +389,22 @@ const Presentation = (() => {
     const slide = State.getActiveSlide();
     if (!slide) return;
 
-    const counts = State.getVoteCounts(slide.id);
     const chartZone = document.getElementById('pres-chart-zone');
     if (!chartZone) return;
 
+    const slideType = slide.type || 'poll';
+
+    // Rating slides: re-render live star distribution
+    if (slideType === 'rating') {
+      _updateSlide(); // full re-render so avg + bars update
+      return;
+    }
+
+    // Text/QR slides: no live chart needed
+    if (slideType === 'text' || slideType === 'qr') return;
+
+    // Poll slides
+    const counts = State.getVoteCounts(slide.id);
     const displayMode = state.presSettings.displayMode;
     const visColours = state.presSettings?.themeVisColours;
     const txtColor = state.presSettings?.themeTextColor || '#ffffff';
@@ -394,6 +415,8 @@ const Presentation = (() => {
       Charts.renderDonut(chartZone, slide, counts, displayMode, txtColor, visColours);
     } else if (slide.layout === 'pie') {
       Charts.renderPie(chartZone, slide, counts, displayMode, txtColor, visColours);
+    } else {
+      Charts.renderBars(chartZone, slide, counts, displayMode, txtColor, visColours);
     }
 
     const voteNum = document.getElementById('pres-vote-num');
@@ -457,6 +480,9 @@ const Presentation = (() => {
   function _togglePoll() {
     const slide = State.getActiveSlide();
     if (!slide) return;
+    // Text and QR slides don't have polls
+    const slideType = slide.type || 'poll';
+    if (slideType === 'text' || slideType === 'qr') return;
     const current = State.get().pollStatus[slide.id] || 'pending';
     const next = current === 'open' ? 'closed' : 'open';
     State.setPollStatus(slide.id, next);

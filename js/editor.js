@@ -106,6 +106,7 @@ const Editor = (() => {
             <img class="canvas-logo hidden" id="canvas-logo" alt="Logo" />
             <div class="canvas-content">
               <div class="canvas-question" id="canvas-question"></div>
+              <div class="canvas-subtitle" id="canvas-subtitle" style="display:none"></div>
               <div class="canvas-chart-area" id="canvas-chart-area"></div>
             </div>
             <div class="canvas-overlay">
@@ -142,7 +143,7 @@ const Editor = (() => {
           </div>
 
           <div id="inspector-slide-pane" class="${currentTab === 'settings' ? 'hidden' : ''}">
-            <!-- SHARED: Question field -->
+            <!-- SHARED: Question + Subtitle fields -->
             <div class="inspector-section">
               <div class="inspector-section-title">
                 <i data-lucide="file-text" class="icon-sm"></i> Content
@@ -151,7 +152,13 @@ const Editor = (() => {
                 <label class="label" for="prop-question">Title / Question</label>
                 <textarea id="prop-question" class="textarea" rows="3"
                   oninput="Editor._updateProp('question', this.value)"
-                  placeholder="Type your question here…"></textarea>
+                  placeholder="Type your question or slide title…"></textarea>
+              </div>
+              <div class="form-group" style="margin-top:var(--sp-3)">
+                <label class="label" for="prop-subtitle">Subtitle / Description <span style="color:var(--text-muted);font-weight:400">(optional)</span></label>
+                <textarea id="prop-subtitle" class="textarea" rows="2"
+                  oninput="Editor._updateProp('subtitle', this.value)"
+                  placeholder="Add extra context or instructions shown below the title…"></textarea>
               </div>
             </div>
 
@@ -291,13 +298,7 @@ const Editor = (() => {
                 </div>
                 <div class="inspector-info-box">
                   <i data-lucide="info" class="icon-sm"></i>
-                  Shows a large QR code with the session join link so latecomers can scan and join easily.
-                </div>
-                <div class="form-group" style="margin-top:var(--sp-3)">
-                  <label class="label" for="prop-qr-subtitle">Subtitle</label>
-                  <textarea id="prop-qr-subtitle" class="textarea" rows="2"
-                    oninput="Editor._updateProp('subtitle', this.value)"
-                    placeholder="e.g. Scan to join the session on your phone"></textarea>
+                  Shows a large QR code with the session join link. Use the <strong>Subtitle</strong> field above to add a scan instruction.
                 </div>
               </div>
             </div>
@@ -466,6 +467,14 @@ const Editor = (() => {
     questionEl.textContent = slide.question || 'No question set';
     questionEl.style.color = state.presSettings?.themeTextColor || '#ffffff';
     questionEl.style.fontFamily = state.presSettings?.themeFontFamily || 'Inter';
+
+    // Subtitle (canvas preview)
+    const canvasSubEl = document.getElementById('canvas-subtitle');
+    if (canvasSubEl) {
+      canvasSubEl.textContent = slide.subtitle || '';
+      canvasSubEl.style.display = slide.subtitle ? '' : 'none';
+      canvasSubEl.style.color = state.presSettings?.themeTextColor || '#ffffff';
+    }
 
     // Logo
     const logoSrc = slide.logoImage || state.presSettings?.themeLogo;
@@ -648,6 +657,9 @@ const Editor = (() => {
     const qEl = document.getElementById('prop-question');
     if (qEl) qEl.value = slide.question || '';
 
+    const subEl = document.getElementById('prop-subtitle');
+    if (subEl) subEl.value = slide.subtitle || '';
+
     const slideType = slide.type || 'poll';
 
     // Show/hide slide-type-specific inspector panels
@@ -683,10 +695,8 @@ const Editor = (() => {
     } else if (slideType === 'text') {
       const bodyEl = document.getElementById('prop-text-body');
       if (bodyEl) bodyEl.value = slide.body || '';
-    } else if (slideType === 'qr') {
-      const subtitleEl = document.getElementById('prop-qr-subtitle');
-      if (subtitleEl) subtitleEl.value = slide.subtitle || '';
     }
+    // QR: subtitle handled by shared prop-subtitle field above
   }
 
   function _renderOptionsList(slide) {

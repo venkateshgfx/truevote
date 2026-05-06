@@ -733,3 +733,14 @@
 .slide-thumb-type.rating { background: rgba(245,158,11,0.85); color: #fff; }
 .slide-thumb-type.text   { background: rgba(99,102,241,0.85); color: #fff; }
 .slide-thumb-type.qr     { background: rgba(16,185,129,0.85); color: #fff; }
+
+/* Presentation subtitle element */
+.pres-subtitle {
+  font-size: clamp(14px, 2vw, 20px);
+  opacity: 0.75;
+  font-weight: 400;
+  line-height: 1.5;
+  margin-top: -8px;
+  margin-bottom: 16px;
+  letter-spacing: 0;
+}

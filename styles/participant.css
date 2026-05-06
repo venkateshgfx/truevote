@@ -719,3 +719,76 @@
   font-size: 12px;
   color: var(--text-muted);
 }
+/* ═══════════════════════════════════════════
+   SUBTITLE — Participant & Presentation
+═══════════════════════════════════════════ */
+
+/* Participant slide subtitle */
+.part-slide-subtitle {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin-top: -12px;
+  margin-bottom: var(--sp-5);
+  padding: 10px 14px;
+  background: var(--surface-2);
+  border-left: 3px solid var(--accent-primary);
+  border-radius: 0 var(--r-md) var(--r-md) 0;
+}
+
+/* Rating results toggle button */
+.part-results-toggle {
+  width: 100%;
+  justify-content: center;
+  gap: var(--sp-2);
+  margin-top: var(--sp-4);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-lg);
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--surface-1);
+  transition: all var(--t-fast);
+}
+.part-results-toggle:hover {
+  background: var(--surface-2);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+/* Mini bar track (rating distribution) */
+.mini-bar-track {
+  height: 8px;
+  background: var(--surface-4);
+  border-radius: 99px;
+  overflow: hidden;
+  flex: 1;
+}
+.mini-bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
+}
+
+/* Presentation subtitle */
+.pres-subtitle {
+  font-size: clamp(14px, 2vw, 20px);
+  opacity: 0.75;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.5;
+  margin-top: -8px;
+  margin-bottom: 16px;
+}
+
+/* Canvas editor subtitle */
+.canvas-subtitle {
+  font-size: 11px;
+  opacity: 0.65;
+  line-height: 1.4;
+  margin-top: -6px;
+  margin-bottom: 8px;
+  padding: 4px 6px;
+  border-left: 2px solid rgba(255,255,255,0.3);
+}
