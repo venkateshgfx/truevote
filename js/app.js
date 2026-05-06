@@ -63,18 +63,23 @@ const App = (() => {
       return;
     }
 
-    // Render the target screen
     const screen = screens[screenName];
     if (!screen) return;
-    screen.render();
 
-    // Show/hide screens
+    // Show/hide screens FIRST — so even if render() crashes, the screen switches
     Object.entries(screens).forEach(([name, s]) => {
       const el = document.getElementById(s.id);
       if (el) el.classList.toggle('active', name === screenName);
     });
 
     State.set({ currentScreen: screenName }, false);
+
+    // Render the target screen (wrapped in try-catch so navigation never fails)
+    try {
+      screen.render();
+    } catch (err) {
+      console.error(`[App.navigate] ${screenName}.render() failed:`, err);
+    }
 
     // Activate Lucide icons on the newly rendered screen
     if (typeof lucide !== 'undefined') lucide.createIcons();

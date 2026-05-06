@@ -272,8 +272,8 @@ const State = (() => {
     setPollStatus(slideId, status) {
       const newPoll = { ..._state.pollStatus, [slideId]: status };
       this.set({ pollStatus: newPoll });
-      // Propagate to server so all devices (incognito included) receive via SSE
-      if (typeof API !== 'undefined') API.pushPollStatus(slideId, status);
+      // Only broadcast to participants when actively presenting
+      if (_isPresenting && typeof API !== 'undefined') API.pushPollStatus(slideId, status);
     },
 
     // ── Presentations management ──

@@ -551,18 +551,24 @@ const Presentation = (() => {
     try { clearInterval(liveRefreshInterval); } catch {}
     try { _stopTimer(); } catch {}
 
-    // Stop broadcasting — participants will see the lobby again
-    try { State.setPresenting(false); } catch {}
-
-    // Clear server state so participants get the "session not started" lobby
+    // Clear server state BEFORE disabling presenting mode (so the pushes go through)
     try {
       if (typeof API !== 'undefined') {
-        API.pushSlides([]);
+        API.pushSlides([]);               // empty slides → participant sees lobby
         API.pushNavigate(0);
+        API.pushPresSettings({});         // clear branding
+        // Close all open polls on server
+        const state = State.get();
+        Object.entries(state.pollStatus || {}).forEach(([sid, st]) => {
+          if (st === 'open') API.pushPollStatus(sid, 'closed');
+        });
       }
     } catch {}
 
-    // Navigate back to editor (always succeeds — App.navigate is safe)
+    // NOW stop broadcasting
+    try { State.setPresenting(false); } catch {}
+
+    // Navigate back to editor
     App.navigate('editor');
     try { Editor._refresh(); } catch {}
   }
