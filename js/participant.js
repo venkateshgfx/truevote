@@ -568,7 +568,8 @@ const Participant = (() => {
       const statusChanged = lastPollStatus !== currentStatus;
 
       if (slideChanged || statusChanged) {
-        if (slideChanged) { selectedOptions = []; hasVoted = false; }
+        // Only reset selection when the actual slide changes, not just status
+        if (slideChanged) { selectedOptions = []; hasVoted = false; _ratingShowResults = false; }
         _renderContent();
         return;
       }
@@ -588,7 +589,8 @@ const Participant = (() => {
     State.subscribe((s, changed) => {
       if (!document.getElementById('screen-participant')?.classList.contains('active')) return;
       if (changed.activeSlideIndex || changed.pollStatus || changed.slides) {
-        if (changed.activeSlideIndex) { selectedOptions = []; hasVoted = false; }
+        // Only reset selection on slide navigation, not poll open/close
+        if (changed.activeSlideIndex) { selectedOptions = []; hasVoted = false; _ratingShowResults = false; }
         _renderContent();
       }
     });
@@ -605,26 +607,26 @@ const Participant = (() => {
 
     selectedOptions = [index];
 
-    // Update star visuals
+    // Update star visuals without a full re-render
     const stars = document.querySelectorAll('.part-star-btn');
     stars.forEach((btn, i) => btn.classList.toggle('active', i <= index));
 
-    // Show/update submit button
-    const existing = document.querySelector('.part-submit-btn');
-    if (existing) {
-      existing.textContent = `Submit Rating (${index + 1} ★)`;
-      existing.disabled = false;
+    // Update or inject submit button
+    let submitBtn = document.querySelector('.part-submit-btn');
+    if (submitBtn) {
+      submitBtn.innerHTML = `Submit Rating (${index + 1} \u2605)`;
+      submitBtn.disabled = false;
     } else {
+      submitBtn = document.createElement('button');
+      submitBtn.className = 'btn btn-primary btn-lg part-submit-btn';
+      submitBtn.innerHTML = `Submit Rating (${index + 1} \u2605)`;
       const starsEl = document.getElementById('part-stars');
-      if (starsEl) {
-        const submitBtn = document.createElement('button');
-        submitBtn.className = 'btn btn-primary btn-lg part-submit-btn';
-        submitBtn.textContent = `Submit Rating (${index + 1} ★)`;
-        submitBtn.onclick = () => Participant._submitVote();
-        starsEl.insertAdjacentElement('afterend', submitBtn);
-      }
+      if (starsEl) starsEl.insertAdjacentElement('afterend', submitBtn);
     }
+    // Always (re)bind onclick so it works after DOM updates
+    submitBtn.onclick = () => Participant._submitVote();
   }
+
 
   function _escHtml(str) {
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');

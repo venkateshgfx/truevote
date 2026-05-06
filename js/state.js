@@ -208,6 +208,19 @@ const State = (() => {
       this.set({ slides: newSlides, activeSlideIndex: newIndex });
     },
 
+    moveSlide(index, direction) {
+      const slides = [..._state.slides];
+      const target = index + direction;
+      if (target < 0 || target >= slides.length) return;
+      // Swap
+      [slides[index], slides[target]] = [slides[target], slides[index]];
+      // Keep active index tracking the moved slide
+      const newActive = _state.activeSlideIndex === index ? target
+        : _state.activeSlideIndex === target ? index
+        : _state.activeSlideIndex;
+      this.set({ slides, activeSlideIndex: newActive });
+    },
+
     updateSlide(index, patch) {
       const newSlides = _state.slides.map((s, i) => i === index ? { ...s, ...patch } : s);
       this.set({ slides: newSlides });

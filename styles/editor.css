@@ -157,11 +157,18 @@
 .slide-list {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: var(--sp-3);
   display: flex;
   flex-direction: column;
   gap: var(--sp-2);
+  min-height: 0; /* critical: allows flex child to scroll */
 }
+
+/* Scrollbar styling for slide list */
+.slide-list::-webkit-scrollbar { width: 4px; }
+.slide-list::-webkit-scrollbar-track { background: transparent; }
+.slide-list::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
 
 .slide-thumb {
   position: relative;
@@ -171,17 +178,54 @@
   transition: all var(--t-fast);
   overflow: hidden;
   background: var(--surface-3);
-  aspect-ratio: 16/9;
+  /* Fixed height — never squish regardless of container */
+  min-height: 76px;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: var(--sp-2);
-  gap: 4px;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 24px var(--sp-2) var(--sp-2) var(--sp-2);
+  gap: 3px;
 }
 
 .slide-thumb:hover { border-color: var(--border-strong); }
 .slide-thumb.active { border-color: var(--accent-primary); box-shadow: 0 0 0 1px var(--accent-primary); }
+
+/* Move buttons — shown on hover */
+.slide-thumb-move {
+  position: absolute;
+  top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  right: 24px; /* leave room for delete btn */
+  opacity: 0;
+  transition: opacity var(--t-fast);
+  z-index: 2;
+}
+.slide-thumb:hover .slide-thumb-move { opacity: 1; }
+
+.slide-thumb-move-btn {
+  width: 16px;
+  height: 14px;
+  border: none;
+  background: rgba(255,255,255,0.15);
+  border-radius: 3px;
+  color: rgba(255,255,255,0.85);
+  font-size: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--t-fast);
+  line-height: 1;
+  padding: 0;
+}
+.slide-thumb-move-btn:hover { background: var(--accent-primary); color: #fff; }
+.slide-thumb-move-btn:disabled { opacity: 0.25; cursor: default; }
+.slide-thumb-move-btn:disabled:hover { background: rgba(255,255,255,0.1); }
+
 
 .slide-thumb-number {
   position: absolute;
@@ -189,37 +233,42 @@
   left: 4px;
   font-size: 10px;
   font-weight: 700;
-  color: var(--text-muted);
-  background: var(--surface-2);
+  color: rgba(255,255,255,0.8);
+  background: rgba(0,0,0,0.35);
   border-radius: var(--r-sm);
   padding: 1px 5px;
+  z-index: 1;
 }
 
 .slide-thumb-question {
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 600;
-  color: var(--text-secondary);
-  text-align: center;
-  line-height: 1.3;
-  max-height: 40px;
+  color: rgba(255,255,255,0.9);
+  text-align: left;
+  line-height: 1.35;
+  max-height: 36px;
   overflow: hidden;
+  width: 100%;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.6);
 }
 
 .slide-thumb-status {
   position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 8px;
-  height: 8px;
+  top: 6px;
+  right: 46px; /* moved left to avoid overlap with move buttons */
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
+  z-index: 2;
 }
-.slide-thumb-status.open { background: var(--accent-success); }
+.slide-thumb-status.open   { background: var(--accent-success); }
 .slide-thumb-status.closed { background: var(--accent-danger); }
-.slide-thumb-status.pending { background: var(--text-muted); }
+.slide-thumb-status.pending { background: rgba(255,255,255,0.3); }
+
 
 .slide-thumb-delete {
   position: absolute;
-  bottom: 4px;
+  top: 4px;
   right: 4px;
   width: 18px;
   height: 18px;
@@ -233,6 +282,7 @@
   align-items: center;
   justify-content: center;
   transition: all var(--t-fast);
+  z-index: 3;
 }
 .slide-thumb:hover .slide-thumb-delete { display: flex; }
 .slide-thumb-delete:hover { background: rgba(239,68,68,0.4); }

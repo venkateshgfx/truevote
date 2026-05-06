@@ -406,6 +406,7 @@ const Editor = (() => {
       const status = state.pollStatus[slide.id] || 'pending';
       const votes = State.getTotalVotes(slide.id);
       const slideType = slide.type || 'poll';
+      const total = state.slides.length;
       const typeBadge = slideType !== 'poll'
         ? `<span class="slide-thumb-type ${slideType}">${slideType}</span>`
         : '';
@@ -416,9 +417,17 @@ const Editor = (() => {
         <div class="slide-thumb-number">${i + 1}</div>
         <div class="slide-thumb-status ${status}"></div>
         ${typeBadge}
-        <div class="slide-thumb-question">${_truncate(slide.question, 50)}</div>
-        <div style="font-size:9px;color:var(--text-muted);display:flex;align-items:center;gap:2px">
+        <div class="slide-thumb-question">${_truncate(slide.question, 45)}</div>
+        <div style="font-size:9px;color:rgba(255,255,255,0.5);display:flex;align-items:center;gap:2px;margin-top:2px">
           ${slideType === 'poll' || slideType === 'rating' ? `<i data-lucide="check-square" style="width:9px;height:9px"></i> ${votes}` : ''}
+        </div>
+        <div class="slide-thumb-move">
+          <button class="slide-thumb-move-btn" title="Move up"
+            onclick="event.stopPropagation(); Editor._moveSlide(${i}, -1)"
+            ${i === 0 ? 'disabled' : ''}>&#9650;</button>
+          <button class="slide-thumb-move-btn" title="Move down"
+            onclick="event.stopPropagation(); Editor._moveSlide(${i}, 1)"
+            ${i === total - 1 ? 'disabled' : ''}>&#9660;</button>
         </div>
         <button class="slide-thumb-delete" onclick="event.stopPropagation(); Editor._deleteSlide(${i})" title="Delete slide">
           <i data-lucide="x" style="width:10px;height:10px"></i>
@@ -823,6 +832,11 @@ const Editor = (() => {
     Toast.show(`${labels[type] || 'Slide'} added`, 'success');
   }
 
+  function _moveSlide(index, direction) {
+    State.moveSlide(index, direction);
+    _refresh();
+  }
+
   function _deleteSlide(index) {
     if (State.get().slides.length <= 1) { Toast.show('Cannot delete the last slide', 'warning'); return; }
     if (!confirm('Delete this slide? All votes will be lost.')) return;
@@ -939,7 +953,7 @@ const Editor = (() => {
 
   return {
     render, _refresh,
-    _addSlide, _deleteSlide,
+    _addSlide, _moveSlide, _deleteSlide,
     _togglePoll, _clearResults, _present, _copyCode, _exportCSV,
     _updateProp, _updateOption, _addOption, _deleteOption,
     _setLayout, _onHexInput,
