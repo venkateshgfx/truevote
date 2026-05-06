@@ -159,9 +159,26 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // ── Favicon — return inline SVG so the browser tab doesn't spin ──────────
+  if (path_ === '/favicon.ico' || path_ === '/favicon.svg') {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+      <rect width="32" height="32" rx="8" fill="#4f46e5"/>
+      <rect x="6" y="18" width="4" height="8" rx="1" fill="white"/>
+      <rect x="12" y="12" width="4" height="14" rx="1" fill="white"/>
+      <rect x="18" y="8" width="4" height="18" rx="1" fill="white"/>
+      <rect x="24" y="14" width="4" height="12" rx="1" fill="white"/>
+    </svg>`;
+    res.writeHead(200, {
+      'Content-Type':  'image/svg+xml',
+      'Cache-Control': 'public, max-age=86400',
+    });
+    res.end(svg);
+    return;
+  }
+
   // ── Static file serving ────────────────────────────────────────────────
   let filePath = path.join(STATIC_DIR, path_ === '/' ? 'index.html' : path_);
-  // SPA fallback — serve index.html for unknown paths
+  // SPA fallback — serve index.html for unknown paths (but NOT favicon)
   if (!fs.existsSync(filePath)) filePath = path.join(STATIC_DIR, 'index.html');
 
   const ext  = path.extname(filePath);
