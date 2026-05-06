@@ -72,23 +72,64 @@ const Participant = (() => {
     }
 
     if (!slide) {
+      const sessionCode = state.sessionCode || '------';
+      const presLogo    = state.presSettings?.themeLogo;
+      const userName    = state.user?.email?.split('@')[0] || 'there';
+
       content.innerHTML = `
-        <div class="part-waiting">
-          <div class="waiting-animation">
-            <div class="waiting-ring"></div>
-            <div class="waiting-ring"></div>
-            <div class="waiting-ring"></div>
-            <div class="waiting-icon">
-              <i data-lucide="bar-chart-2" class="icon-xl" style="color:var(--accent-primary)"></i>
+        <div class="part-lobby">
+
+          ${presLogo ? `
+            <div class="part-lobby-logo">
+              <img src="${presLogo}" alt="Presentation logo" />
+            </div>` : `
+            <div class="part-lobby-icon">
+              <i data-lucide="bar-chart-2" class="icon-2xl" style="color:#fff"></i>
+            </div>`
+          }
+
+          <div class="part-lobby-greeting">
+            Welcome, <strong>${_escHtml(userName)}</strong>! 👋
+          </div>
+
+          <div class="part-lobby-status">
+            <div class="part-lobby-status-dot"></div>
+            Waiting for presenter to begin…
+          </div>
+
+          <div class="part-lobby-code-card">
+            <div class="part-lobby-code-label">
+              <i data-lucide="hash" class="icon-xs"></i> Your Session Code
             </div>
+            <div class="part-lobby-code">${sessionCode}</div>
           </div>
-          <div class="waiting-title">No Session Active</div>
-          <div class="waiting-subtitle">No presentation is currently running. Please wait for the presenter to begin.</div>
-          <div class="waiting-pulse-dots">
+
+          <div class="part-lobby-instructions">
+            <div class="part-lobby-instructions-title">
+              <i data-lucide="info" class="icon-sm"></i> How it works
+            </div>
+            <ol class="part-lobby-steps">
+              <li>
+                <span class="step-num">1</span>
+                <span>Keep this tab open — polls will appear automatically when the presenter starts</span>
+              </li>
+              <li>
+                <span class="step-num">2</span>
+                <span>Select your answer when a question appears and tap <strong>Submit</strong></span>
+              </li>
+              <li>
+                <span class="step-num">3</span>
+                <span>Your vote is saved securely — you can't vote twice on the same question</span>
+              </li>
+            </ol>
+          </div>
+
+          <div class="part-lobby-pulse">
             <div class="waiting-dot"></div>
             <div class="waiting-dot"></div>
             <div class="waiting-dot"></div>
           </div>
+
         </div>
       `;
       if (typeof lucide !== 'undefined') lucide.createIcons();

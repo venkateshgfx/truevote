@@ -35,6 +35,7 @@ const State = (() => {
 
   const listeners = new Set();
   let channel = null;
+  let _isPresenting = false; // true only while presentation screen is active
 
   try {
     channel = new BroadcastChannel('slidemeter_v1');
@@ -88,22 +89,26 @@ const State = (() => {
         );
       }
 
-      // Push navigation to server if presenter changed the slide
-      if (patch.activeSlideIndex !== undefined && typeof API !== 'undefined' && _state.user?.role === 'presenter') {
-        API.pushNavigate(patch.activeSlideIndex);
-      }
-
-      // Push slides to server if presenter changed them
-      if (patch.slides !== undefined && typeof API !== 'undefined' && _state.user?.role === 'presenter') {
-        API.pushSlides(patch.slides);
-      }
-
-      // Push presSettings to server if presenter changed them
-      if (patch.presSettings !== undefined && typeof API !== 'undefined' && _state.user?.role === 'presenter') {
-        API.pushPresSettings(patch.presSettings);
+      // Push to server ONLY while actively presenting — not during editing/dashboard
+      if (_isPresenting && typeof API !== 'undefined' && _state.user?.role === 'presenter') {
+        if (patch.activeSlideIndex !== undefined) API.pushNavigate(patch.activeSlideIndex);
+        if (patch.slides          !== undefined) API.pushSlides(patch.slides);
+        if (patch.presSettings    !== undefined) API.pushPresSettings(patch.presSettings);
+        if (patch.pollStatus      !== undefined) {
+          Object.entries(_state.pollStatus).forEach(([sid, st]) => API.pushPollStatus(sid, st));
+        }
       }
 
       _notify(patch);
+    },
+
+    /** Call when entering/exiting presentation mode */
+    setPresenting(val) {
+      _isPresenting = !!val;
+    },
+
+    isPresenting() {
+      return _isPresenting;
     },
 
     subscribe(fn) {

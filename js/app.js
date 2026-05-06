@@ -142,24 +142,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ── Server integration ───────────────────────────────────────────────────
   if (hasServer) {
-    // Push our session code to server (presenter side)
-    const currentState = State.get();
-    if (!codeFromUrl && currentState.sessionCode) {
-      API.registerSession(currentState.sessionCode);
-    }
-
-    // Push full presenter state to server on startup (so participants get current data)
-    if (currentState.user?.role === 'presenter') {
-      if (currentState.slides?.length > 0) API.pushSlides(currentState.slides);
-      if (currentState.presSettings) API.pushPresSettings(currentState.presSettings);
-      if (currentState.pollStatus) {
-        Object.entries(currentState.pollStatus).forEach(([slideId, status]) => {
-          API.pushPollStatus(slideId, status);
-        });
-      }
-      if (typeof currentState.activeSlideIndex === 'number') {
-        API.pushNavigate(currentState.activeSlideIndex);
-      }
+    // Session code registration only (no slide data — broadcast starts when presenter clicks Present)
+    if (!codeFromUrl && state.sessionCode) {
+      API.registerSession(state.sessionCode);
     }
 
     // Merge server votes into local state (authoritative source)

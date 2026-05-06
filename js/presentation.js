@@ -12,6 +12,18 @@ const Presentation = (() => {
     const el = document.getElementById('screen-presentation');
     const state = State.get();
 
+    // Mark as presenting — this enables all server broadcasts
+    State.setPresenting(true);
+
+    // Push full current state to server now so participants get it immediately
+    if (typeof API !== 'undefined') {
+      if (state.slides?.length > 0)  API.pushSlides(state.slides);
+      if (state.presSettings)        API.pushPresSettings(state.presSettings);
+      if (state.sessionCode)         API.registerSession(state.sessionCode);
+      API.pushNavigate(state.activeSlideIndex ?? 0);
+      Object.entries(state.pollStatus || {}).forEach(([sid, st]) => API.pushPollStatus(sid, st));
+    }
+
     el.innerHTML = `
       <!-- Hamburger -->
       <button class="pres-hamburger" id="pres-hamburger" onclick="Presentation._toggleSidebar()" title="Settings">☰</button>
@@ -428,6 +440,16 @@ const Presentation = (() => {
   function _exit() {
     clearInterval(liveRefreshInterval);
     _stopTimer();
+
+    // Stop broadcasting — participants will see the lobby again
+    State.setPresenting(false);
+
+    // Clear server state so participants get the "session not started" lobby
+    if (typeof API !== 'undefined') {
+      API.pushSlides([]);          // empty slides → participant sees lobby
+      API.pushNavigate(0);
+    }
+
     App.navigate('editor');
     Editor._refresh();
   }
