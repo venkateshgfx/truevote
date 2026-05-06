@@ -6,7 +6,7 @@
 const API = (() => {
   let _serverAvailable = null; // null = unknown, true/false after probe
   let _eventSource = null;
-  const _handlers = { vote: [], pollStatus: [], navigate: [], init: [], slides: [], presSettings: [] };
+  const _handlers = { vote: [], pollStatus: [], navigate: [], init: [], slides: [], presSettings: [], presentations: [] };
 
   // ── Detect if we're running under the Node server (not file://) ──────────
   async function probe() {
@@ -97,6 +97,32 @@ const API = (() => {
     }).catch(() => {});
   }
 
+  // ── Fetch all presentations from server ──────────────────────────────────
+  async function fetchPresentations() {
+    if (!isAvailable()) return null;
+    try {
+      const res = await fetch('/api/presentations');
+      if (!res.ok) return null;
+      return await res.json();
+    } catch { return null; }
+  }
+
+  // ── Save (upsert) a presentation to server cloud ─────────────────────────
+  async function savePresentation(pres) {
+    if (!isAvailable()) return;
+    fetch('/api/presentations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(pres),
+    }).catch(() => {});
+  }
+
+  // ── Delete a presentation from server cloud ──────────────────────────────
+  async function deletePresentation(id) {
+    if (!isAvailable()) return;
+    fetch(`/api/presentations/${id}`, { method: 'DELETE' }).catch(() => {});
+  }
+
   // ── SSE subscription ──────────────────────────────────────────────────────
   function connect() {
     if (!isAvailable() || _eventSource) return;
@@ -120,6 +146,9 @@ const API = (() => {
     _eventSource.addEventListener('presSettings', e => {
       _dispatch('presSettings', JSON.parse(e.data));
     });
+    _eventSource.addEventListener('presentations', e => {
+      _dispatch('presentations', JSON.parse(e.data));
+    });
     _eventSource.onerror = () => {
       // Auto-reconnect is built into EventSource
     };
@@ -133,5 +162,5 @@ const API = (() => {
     (_handlers[event] || []).forEach(h => { try { h(data); } catch {} });
   }
 
-  return { probe, isAvailable, castVote, getVotes, pushPollStatus, pushNavigate, pushSlides, pushPresSettings, registerSession, connect, on };
+  return { probe, isAvailable, castVote, getVotes, pushPollStatus, pushNavigate, pushSlides, pushPresSettings, registerSession, fetchPresentations, savePresentation, deletePresentation, connect, on };
 })();

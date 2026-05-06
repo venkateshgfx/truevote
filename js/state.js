@@ -36,6 +36,7 @@ const State = (() => {
   const listeners = new Set();
   let channel = null;
   let _isPresenting = false; // true only while presentation screen is active
+  let _cloudSaveTimer = null; // debounce timer for cloud presentation saves
 
   try {
     channel = new BroadcastChannel('slidemeter_v1');
@@ -103,6 +104,13 @@ const State = (() => {
               }
             : p
         );
+        // Push updated presentation to cloud so other browsers see it
+        const updatedPres = _state.presentations.find(p => p.id === _state.activePresentationId);
+        if (updatedPres && typeof API !== 'undefined') {
+          // Debounce cloud save to avoid flooding on rapid edits
+          clearTimeout(_cloudSaveTimer);
+          _cloudSaveTimer = setTimeout(() => API.savePresentation(updatedPres), 500);
+        }
       }
 
       // Push to server ONLY while actively presenting — not during editing/dashboard
@@ -225,12 +233,15 @@ const State = (() => {
         slides: [],
         votes: {},
         pollStatus: {},
+        activeSlideIndex: 0,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
       const presentations = [..._state.presentations, pres];
-      this.set({ presentations }, false); // don't broadcast presentations to other tabs
+      this.set({ presentations }, false); // don't broadcast to other tabs
       this.setActivePresentation(id);
+      // Persist to cloud so other browsers see it
+      if (typeof API !== 'undefined') API.savePresentation(pres);
       return pres;
     },
 
@@ -238,12 +249,17 @@ const State = (() => {
       const presentations = _state.presentations.map(p =>
         p.id === id ? { ...p, name, updatedAt: new Date().toISOString() } : p
       );
-      this.set({ presentations }, false); // don't broadcast presentations to other tabs
+      this.set({ presentations }, false);
+      // Persist renamed copy to cloud
+      const updated = presentations.find(p => p.id === id);
+      if (updated && typeof API !== 'undefined') API.savePresentation(updated);
     },
 
     deletePresentation(id) {
       const presentations = _state.presentations.filter(p => p.id !== id);
-      this.set({ presentations }, false); // don't broadcast presentations to other tabs
+      this.set({ presentations }, false);
+      // Remove from cloud
+      if (typeof API !== 'undefined') API.deletePresentation(id);
       if (_state.activePresentationId === id) {
         if (presentations.length > 0) {
           this.setActivePresentation(presentations[0].id);

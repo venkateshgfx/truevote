@@ -168,8 +168,66 @@ document.addEventListener('DOMContentLoaded', async () => {
       State.set({ votes: mergedAllVotes }, false);
     }
 
+    // ── Load presentations from cloud (cross-browser sync) ────────────────
+    // Merge server presentations with local ones — server is authoritative
+    // for existence; newer updatedAt wins for content.
+    const cloudPresentations = await API.fetchPresentations();
+    if (cloudPresentations && cloudPresentations.length > 0) {
+      const localMap = {};
+      (State.get().presentations || []).forEach(p => { localMap[p.id] = p; });
+
+      cloudPresentations.forEach(cp => {
+        const lp = localMap[cp.id];
+        // Take whichever is newer; if no local copy, always take cloud
+        if (!lp || new Date(cp.updatedAt) >= new Date(lp.updatedAt || 0)) {
+          localMap[cp.id] = cp;
+        }
+      });
+
+      const mergedPresentations = Object.values(localMap);
+      State.set({ presentations: mergedPresentations }, false);
+
+      // Upload any local-only presentations to cloud so they're shared
+      const cloudIds = new Set(cloudPresentations.map(p => p.id));
+      mergedPresentations.forEach(p => {
+        if (!cloudIds.has(p.id)) API.savePresentation(p);
+      });
+
+      // Restore active presentation if needed
+      const st = State.get();
+      if (mergedPresentations.length > 0 && !st.activePresentationId) {
+        State.setActivePresentation(mergedPresentations[0].id);
+      } else if (st.activePresentationId) {
+        // Refresh active presentation data from cloud
+        const active = mergedPresentations.find(p => p.id === st.activePresentationId);
+        if (active) State.setActivePresentation(active.id);
+      }
+    }
+
     // SSE handlers — all use broadcast=false to prevent shouldSync from
     // writing server data back over saved presentations
+    API.on('presentations', ({ presentations }) => {
+      if (!presentations || State.get().user?.role === 'participant') return;
+      // Merge incoming cloud presentations into local state
+      const localMap = {};
+      (State.get().presentations || []).forEach(p => { localMap[p.id] = p; });
+      presentations.forEach(cp => {
+        const lp = localMap[cp.id];
+        if (!lp || new Date(cp.updatedAt) >= new Date(lp.updatedAt || 0)) {
+          localMap[cp.id] = cp;
+        }
+      });
+      // Remove presentations that were deleted on server
+      const serverIds = new Set(presentations.map(p => p.id));
+      Object.keys(localMap).forEach(id => {
+        if (!serverIds.has(id)) delete localMap[id];
+      });
+      State.set({ presentations: Object.values(localMap) }, false);
+      // Re-render dashboard if it's active
+      if (document.getElementById('screen-dashboard')?.classList.contains('active')) {
+        Dashboard.render();
+      }
+    });
     API.on('vote', ({ slideId, slideVotes }) => {
       const currentSlideVotes = State.get().votes[slideId] || {};
       const mergedSlideVotes = { ...currentSlideVotes, ...slideVotes };
@@ -198,7 +256,20 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     });
     API.on('init', (initState) => {
+      // For participants: sync real-time state
       _syncParticipantState(initState);
+      // For presenters: if server has presentations, merge them
+      if (State.get().user?.role === 'presenter' && initState.presentations?.length > 0) {
+        const localMap = {};
+        (State.get().presentations || []).forEach(p => { localMap[p.id] = p; });
+        initState.presentations.forEach(cp => {
+          const lp = localMap[cp.id];
+          if (!lp || new Date(cp.updatedAt) >= new Date(lp.updatedAt || 0)) {
+            localMap[cp.id] = cp;
+          }
+        });
+        State.set({ presentations: Object.values(localMap) }, false);
+      }
     });
 
     API.connect(); // open SSE connection

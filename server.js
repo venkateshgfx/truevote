@@ -2,13 +2,19 @@
  * SlideMeter — Backend Server
  * Pure Node.js (no npm packages). Serves static files + vote API.
  *
- *  POST /api/vote         — cast a vote (duplicate = 409)
- *  GET  /api/votes        — return all server-side votes
- *  POST /api/poll-status  — presenter opens/closes a poll
- *  POST /api/navigate     — presenter changes active slide
- *  POST /api/session      — register session code
- *  GET  /api/state        — current shared state snapshot
- *  GET  /api/events       — SSE stream for real-time updates
+ *  POST /api/vote                   — cast a vote (duplicate = 409)
+ *  GET  /api/votes                  — return all server-side votes
+ *  POST /api/poll-status            — presenter opens/closes a poll
+ *  POST /api/navigate               — presenter changes active slide
+ *  POST /api/session                — register session code
+ *  GET  /api/state                  — current shared state snapshot
+ *  GET  /api/events                 — SSE stream for real-time updates
+ *
+ *  — Presentations Cloud Storage (cross-browser sync) —
+ *  GET  /api/presentations          — list all presentations
+ *  POST /api/presentations          — create or update a presentation
+ *  DELETE /api/presentations/:id    — delete a presentation
+ *  GET  /api/presentations/:id      — get a single presentation
  */
 
 const http  = require('http');
@@ -27,6 +33,11 @@ const serverState = {
   pollStatus:       {},    // { slideId: 'pending'|'open'|'closed' }
   presSettings:     {},    // theme/branding settings from presenter
 };
+
+// ── Cloud Presentations Store ────────────────────────────────────────────────
+// In-memory store: { [presId]: presentationObject }
+// Survives across browser sessions; shared across all connected clients.
+const presStore = {};
 
 // ── SSE client registry ─────────────────────────────────────────────────────
 const clients = new Set();
@@ -68,7 +79,7 @@ const server = http.createServer(async (req, res) => {
   const path_ = url.pathname;
 
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
 
@@ -131,6 +142,58 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { ok: true });
   }
 
+  // ── GET /api/presentations ─────────────────────────────────────────────
+  // Returns all presentations sorted by updatedAt desc
+  if (path_ === '/api/presentations' && req.method === 'GET') {
+    const list = Object.values(presStore).sort((a, b) =>
+      new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0)
+    );
+    return json(res, 200, list);
+  }
+
+  // ── GET /api/presentations/:id ─────────────────────────────────────────
+  const presGetMatch = path_.match(/^\/api\/presentations\/([^/]+)$/);
+  if (presGetMatch && req.method === 'GET') {
+    const id = presGetMatch[1];
+    if (!presStore[id]) return json(res, 404, { error: 'Not found' });
+    return json(res, 200, presStore[id]);
+  }
+
+  // ── POST /api/presentations ────────────────────────────────────────────
+  // Upsert: create or fully replace a presentation by its id
+  if (path_ === '/api/presentations' && req.method === 'POST') {
+    let body;
+    try { body = await readBody(req); } catch { return json(res, 400, { error: 'Bad JSON' }); }
+    const { id, name, sessionCode, slides, votes, pollStatus,
+            activeSlideIndex, createdAt, updatedAt } = body;
+    if (!id || !name) return json(res, 400, { error: 'id and name required' });
+
+    presStore[id] = {
+      id, name,
+      sessionCode:      sessionCode      || '',
+      slides:           slides           || [],
+      votes:            votes            || {},
+      pollStatus:       pollStatus       || {},
+      activeSlideIndex: activeSlideIndex || 0,
+      createdAt:        createdAt        || new Date().toISOString(),
+      updatedAt:        updatedAt        || new Date().toISOString(),
+    };
+    // Broadcast updated list to all connected clients
+    broadcast('presentations', { presentations: Object.values(presStore) });
+    return json(res, 200, { ok: true, presentation: presStore[id] });
+  }
+
+  // ── DELETE /api/presentations/:id ──────────────────────────────────────
+  const presDelMatch = path_.match(/^\/api\/presentations\/([^/]+)$/);
+  if (presDelMatch && req.method === 'DELETE') {
+    const id = presDelMatch[1];
+    if (presStore[id]) {
+      delete presStore[id];
+      broadcast('presentations', { presentations: Object.values(presStore) });
+    }
+    return json(res, 200, { ok: true });
+  }
+
   // ── POST /api/presSettings ─────────────────────────────────────────────
   if (path_ === '/api/presSettings' && req.method === 'POST') {
     const { presSettings } = await readBody(req).catch(() => ({}));
@@ -143,7 +206,7 @@ const server = http.createServer(async (req, res) => {
 
   // ── GET /api/state ─────────────────────────────────────────────────────
   if (path_ === '/api/state' && req.method === 'GET')
-    return json(res, 200, serverState);
+    return json(res, 200, { ...serverState, presentations: Object.values(presStore) });
 
   // ── GET /api/events (SSE) ──────────────────────────────────────────────
   if (path_ === '/api/events' && req.method === 'GET') {
@@ -153,7 +216,12 @@ const server = http.createServer(async (req, res) => {
       'Connection':    'keep-alive',
       'Access-Control-Allow-Origin': '*',
     });
-    res.write(`event: init\ndata: ${JSON.stringify(serverState)}\n\n`);
+    // Send current serverState + current presentations in init event
+    const initPayload = {
+      ...serverState,
+      presentations: Object.values(presStore),
+    };
+    res.write(`event: init\ndata: ${JSON.stringify(initPayload)}\n\n`);
     clients.add(res);
     req.on('close', () => clients.delete(res));
     return;
