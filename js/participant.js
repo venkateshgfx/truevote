@@ -9,7 +9,7 @@ const Participant = (() => {
   let liveInterval = null;
   let lastSlideId = null;
   let lastPollStatus = null;
-  let _ratingShowResults = false; // toggled per-session by participant
+
 
   function render() {
     const el = document.getElementById('screen-participant');
@@ -199,8 +199,6 @@ const Participant = (() => {
       const myRating = alreadyVoted ? (slideVotes[userHash]?.options?.[0] ?? -1) : (selectedOptions[0] ?? -1);
       const pollOpen = status === 'open' && !hasVoted && !alreadyVoted && !slide.locked;
       const voted = hasVoted || alreadyVoted;
-      // Results visible only if: voted AND presenter enabled it AND user toggled it on
-      const showGroupResults = voted && slide.showResultsToAudience && _ratingShowResults;
 
       let feedbackHTML = '';
       if (voted) {
@@ -228,33 +226,7 @@ const Participant = (() => {
               aria-label="${i+1} star">&#9733;</button>`).join('')}
         </div>`;
 
-      // Group results section (hidden by default; shown when toggled)
-      let groupResultsHTML = '';
-      if (showGroupResults) {
-        groupResultsHTML = `
-          <div class="part-rating-results">
-            <div class="part-rating-avg-label">Group Average: <strong>${avg.toFixed(1)} &#9733;</strong> from ${total} response${total!==1?'s':''}</div>
-            <div class="part-rating-dist">
-              ${Array.from({length:maxStars},(_,i)=>{
-                const star=maxStars-i; const c=counts[star-1]||0;
-                const pct=total>0?Math.round((c/total)*100):0;
-                return `<div class="part-rating-dist-row">
-                  <span>${star}&#9733;</span>
-                  <div class="mini-bar-track"><div class="mini-bar-fill" style="width:${pct}%;background:#f59e0b"></div></div>
-                  <span>${pct}%</span>
-                </div>`;
-              }).join('')}
-            </div>
-          </div>`;
-      }
 
-      // Toggle button for group results (only if presenter enabled it and user has voted)
-      const toggleBtnHTML = voted && slide.showResultsToAudience
-        ? `<button class="btn btn-ghost btn-sm part-results-toggle" id="part-toggle-results-btn">
-            <i data-lucide="${_ratingShowResults ? 'eye-off' : 'bar-chart-2'}" class="icon-sm"></i>
-            ${_ratingShowResults ? 'Hide Results' : 'Show Results'}
-           </button>`
-        : '';
 
       content.innerHTML = `
         <div class="part-slide-info">
@@ -280,8 +252,7 @@ const Participant = (() => {
           <button class="btn btn-primary btn-lg part-submit-btn" id="part-rating-submit-btn">
             Submit Rating (${myRating+1} &#9733;)
           </button>` : ''}
-        ${toggleBtnHTML}
-        ${groupResultsHTML}
+
         `}`;
 
       if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -301,9 +272,7 @@ const Participant = (() => {
       const submitBtnEl = document.getElementById('part-rating-submit-btn');
       if (submitBtnEl) submitBtnEl.addEventListener('click', _submitVote);
 
-      // ── Wire up toggle button ──
-      const toggleEl = document.getElementById('part-toggle-results-btn');
-      if (toggleEl) toggleEl.addEventListener('click', _toggleRatingResults);
+
 
       return;
     }
@@ -479,10 +448,6 @@ const Participant = (() => {
     if (typeof lucide !== 'undefined') lucide.createIcons();
   }
 
-  function _toggleRatingResults() {
-    _ratingShowResults = !_ratingShowResults;
-    _renderContent();
-  }
 
   function _selectOption(index) {
     const state = State.get();
@@ -638,5 +603,5 @@ const Participant = (() => {
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
 
-  return { render, _selectOption, _selectStar, _toggleRatingResults, _submitVote };
+  return { render, _selectOption, _selectStar, _submitVote };
 })();
