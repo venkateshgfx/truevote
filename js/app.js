@@ -88,7 +88,18 @@ const App = (() => {
   }
 
   function logout() {
-    State.set({ user: null, currentScreen: 'auth' }, false);
+    // Preserve presentations — only clear session/auth state
+    const savedPresentations    = State.get().presentations;
+    const savedActivePres       = State.get().activePresentationId;
+
+    State.set({
+      user:          null,
+      currentScreen: 'auth',
+      // Explicitly keep presentations so they're saved with the cleared user
+      presentations:        savedPresentations,
+      activePresentationId: savedActivePres,
+    }, false);
+
     DB.save();
     navigate('auth');
     Toast.show('Signed out successfully', 'info');
@@ -157,31 +168,33 @@ document.addEventListener('DOMContentLoaded', async () => {
       State.set({ votes: mergedAllVotes }, false);
     }
 
-    // SSE handlers for real-time cross-device/incognito sync
+    // SSE handlers — all use broadcast=false to prevent shouldSync from
+    // writing server data back over saved presentations
     API.on('vote', ({ slideId, slideVotes }) => {
       const currentSlideVotes = State.get().votes[slideId] || {};
       const mergedSlideVotes = { ...currentSlideVotes, ...slideVotes };
       const v = { ...State.get().votes, [slideId]: mergedSlideVotes };
-      State.set({ votes: v }, false);
+      State.set({ votes: v }, false); // broadcast=false: votes come from server, not local edit
     });
     API.on('pollStatus', ({ slideId, status }) => {
+      // Only participants receive pollStatus from server — presenter drives it
+      if (State.get().user?.role !== 'participant') return;
       const ps = { ...State.get().pollStatus, [slideId]: status };
-      State.set({ pollStatus: ps });
+      State.set({ pollStatus: ps }, false);
     });
     API.on('navigate', ({ activeSlideIndex }) => {
-      // Only update on participant — presenter drives navigation
       if (State.get().user?.role === 'participant') {
-        State.set({ activeSlideIndex });
+        State.set({ activeSlideIndex }, false);
       }
     });
     API.on('slides', ({ slides }) => {
       if (State.get().user?.role === 'participant') {
-        State.set({ slides });
+        State.set({ slides }, false);
       }
     });
     API.on('presSettings', ({ presSettings }) => {
       if (State.get().user?.role === 'participant') {
-        State.set({ presSettings });
+        State.set({ presSettings }, false);
       }
     });
     API.on('init', (initState) => {
@@ -226,8 +239,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (initState.presSettings && Object.keys(initState.presSettings).length > 0) syncData.presSettings = initState.presSettings;
 
     if (Object.keys(syncData).length > 0) {
-      // Use broadcast = true so participant UI re-renders
-      State.set(syncData);
+      // broadcast=false: server data should never trigger shouldSync or re-broadcast
+      State.set(syncData, false);
     }
   }
 

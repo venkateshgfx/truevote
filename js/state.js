@@ -42,8 +42,20 @@ const State = (() => {
     channel.onmessage = (e) => {
       if (e.data && e.data.type === 'STATE_UPDATE') {
         const patch = e.data.patch;
-        Object.assign(_state, patch);
-        _notify(patch);
+
+        // NEVER accept presentations/activePresentationId from other tabs.
+        // Each browser tab loads its own presentations from localStorage.
+        // Allowing cross-tab presentation overwrites is what causes data loss
+        // when an incognito window (fresh localStorage) seeds demo data and
+        // broadcasts it — overwriting the real window's saved presentations.
+        const safePatch = { ...patch };
+        delete safePatch.presentations;
+        delete safePatch.activePresentationId;
+
+        if (Object.keys(safePatch).length > 0) {
+          Object.assign(_state, safePatch);
+          _notify(safePatch);
+        }
       }
     };
   } catch (e) { /* BroadcastChannel not available */ }
@@ -65,13 +77,17 @@ const State = (() => {
 
       // Auto-sync back into active presentation on any relevant field change.
       // Use !== undefined checks — empty {} and [] are falsy so || would miss them.
-      const shouldSync = _state.activePresentationId && (
-        patch.slides          !== undefined ||
-        patch.votes           !== undefined ||
-        patch.pollStatus      !== undefined ||
-        patch.sessionCode     !== undefined ||
-        patch.activeSlideIndex !== undefined
-      );
+      // Only run for presenter role — participants must never write server-received
+      // data back into the presentations array (would corrupt saved presentations).
+      const shouldSync = _state.activePresentationId &&
+        _state.user?.role === 'presenter' &&
+        (
+          patch.slides          !== undefined ||
+          patch.votes           !== undefined ||
+          patch.pollStatus      !== undefined ||
+          patch.sessionCode     !== undefined ||
+          patch.activeSlideIndex !== undefined
+        );
 
       if (shouldSync) {
         _state.presentations = _state.presentations.map(p =>
@@ -201,7 +217,7 @@ const State = (() => {
     // ── Presentations management ──
     createPresentation(name) {
       const id = `pres_${Date.now()}`;
-      const sessionCode = generateSessionCode(); // unique per presentation
+      const sessionCode = generateSessionCode();
       const pres = {
         id,
         name: name || 'New Presentation',
@@ -213,7 +229,7 @@ const State = (() => {
         updatedAt: new Date().toISOString(),
       };
       const presentations = [..._state.presentations, pres];
-      this.set({ presentations });
+      this.set({ presentations }, false); // don't broadcast presentations to other tabs
       this.setActivePresentation(id);
       return pres;
     },
@@ -222,18 +238,17 @@ const State = (() => {
       const presentations = _state.presentations.map(p =>
         p.id === id ? { ...p, name, updatedAt: new Date().toISOString() } : p
       );
-      this.set({ presentations });
+      this.set({ presentations }, false); // don't broadcast presentations to other tabs
     },
 
     deletePresentation(id) {
       const presentations = _state.presentations.filter(p => p.id !== id);
-      this.set({ presentations });
-      // If deleted the active one, switch to another
+      this.set({ presentations }, false); // don't broadcast presentations to other tabs
       if (_state.activePresentationId === id) {
         if (presentations.length > 0) {
           this.setActivePresentation(presentations[0].id);
         } else {
-          this.set({ activePresentationId: null, slides: [], votes: {}, pollStatus: {}, activeSlideIndex: 0 });
+          this.set({ activePresentationId: null, slides: [], votes: {}, pollStatus: {}, activeSlideIndex: 0 }, false);
         }
       }
     },
@@ -414,5 +429,5 @@ function seedDemoData(existingSlides) {
     activeSlideIndex: 0,
     activeThemeId: 'theme_default',
     themes,
-  });
+  }, false); // broadcast=false — never push seed data to other tabs
 }
