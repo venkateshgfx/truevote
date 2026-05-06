@@ -115,7 +115,7 @@ const server = http.createServer(async (req, res) => {
   if (path_ === '/api/vote' && req.method === 'POST') {
     let body;
     try { body = await readBody(req); } catch { return json(res, 400, { error: 'Bad JSON' }); }
-    const { slideId, userHash, options, email, ldapId } = body;
+    const { slideId, userHash, options, email } = body;
     if (!slideId || !userHash || !Array.isArray(options))
       return json(res, 400, { error: 'Missing fields' });
 
@@ -124,7 +124,7 @@ const server = http.createServer(async (req, res) => {
     if (serverState.votes[slideId][userHash])
       return json(res, 409, { success: false, reason: 'DUPLICATE_VOTE' });
 
-    serverState.votes[slideId][userHash] = { options, ts: new Date().toISOString(), email, ldapId };
+    serverState.votes[slideId][userHash] = { options, ts: new Date().toISOString(), email };
     broadcast('vote', { slideId, slideVotes: serverState.votes[slideId] });
     return json(res, 200, { success: true });
   }

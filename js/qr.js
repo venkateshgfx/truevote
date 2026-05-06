@@ -134,10 +134,10 @@ const QRHelper = (() => {
       <div class="modal share-modal" style="max-width:520px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--sp-6)">
           <div>
-            <div class="modal-title">📡 Invite Participants</div>
+            <div class="modal-title"><i data-lucide="radio" class="icon-md" style="vertical-align:middle;margin-right:6px"></i> Invite Participants</div>
             <div class="text-sm text-muted" style="margin-top:4px">Share any of these to let participants join</div>
           </div>
-          <button class="btn btn-ghost btn-icon" onclick="document.getElementById('share-modal-backdrop').remove()">✕</button>
+          <button class="btn btn-ghost btn-icon" onclick="document.getElementById('share-modal-backdrop').remove()"><i data-lucide="x" class="icon-md"></i></button>
         </div>
 
         <!-- QR Code -->
@@ -165,7 +165,7 @@ const QRHelper = (() => {
                   border-radius:var(--r-lg);padding:10px 18px;flex:1;text-align:center;
                 ">${code}</div>
                 <button class="btn btn-secondary btn-icon btn-sm" title="Copy code"
-                  onclick="QRHelper._copy('${code}','code')">📋</button>
+                  onclick="QRHelper._copy('${code}','code')"><i data-lucide="clipboard" class="icon-sm"></i></button>
               </div>
             </div>
 
@@ -178,7 +178,7 @@ const QRHelper = (() => {
                   style="font-size:11px;font-family:var(--font-mono);cursor:pointer;"
                   onclick="this.select()" />
                 <button class="btn btn-secondary btn-icon btn-sm" title="Copy URL"
-                  onclick="QRHelper._copy(document.getElementById('share-url-input').value,'url')">📋</button>
+                  onclick="QRHelper._copy(document.getElementById('share-url-input').value,'url')"><i data-lucide="clipboard" class="icon-sm"></i></button>
               </div>
             </div>
           </div>
@@ -190,20 +190,20 @@ const QRHelper = (() => {
           border-radius:var(--r-lg);padding:var(--sp-4);font-size:13px;
           color:var(--text-secondary);line-height:1.7;
         ">
-          <strong style="color:var(--text-primary)">📱 How to join:</strong><br>
+          <strong style="color:var(--text-primary)"><i data-lucide="smartphone" class="icon-sm" style="vertical-align:middle;margin-right:4px"></i> How to join:</strong><br>
           Participants open the link on their phone or laptop, enter their
-          <strong>Corporate Email + LDAP ID</strong>, and the code is pre-filled automatically.
+          <strong>Email</strong>, and the session code is pre-filled automatically.
           They'll see the poll as soon as you click <em>Start Poll</em>.
         </div>
 
         <div style="display:flex;gap:var(--sp-3);margin-top:var(--sp-5)">
           <button class="btn btn-primary" style="flex:1;justify-content:center"
             onclick="QRHelper._copy(document.getElementById('share-url-input').value,'url')">
-            🔗 Copy Join Link
+            <i data-lucide="link" class="icon-sm"></i> Copy Join Link
           </button>
           <button class="btn btn-secondary"
             onclick="QRHelper._downloadQR()">
-            ⬇ Download QR
+            <i data-lucide="download" class="icon-sm"></i> Download QR
           </button>
           <button class="btn btn-ghost"
             onclick="document.getElementById('share-modal-backdrop').remove()">
@@ -219,13 +219,14 @@ const QRHelper = (() => {
     requestAnimationFrame(() => {
       const box = document.getElementById('share-qr-box');
       if (box) renderQR(box, joinUrl, 160);
+      if (typeof lucide !== 'undefined') lucide.createIcons();
     });
   }
 
   // ── Copy helper ─────────────────────────────────────────────────────────
   function _copy(text, kind = 'text') {
     navigator.clipboard.writeText(text).then(() => {
-      Toast.show(kind === 'url' ? '🔗 Join URL copied!' : `📋 Code "${text}" copied!`, 'success');
+      Toast.show(kind === 'url' ? 'Join URL copied!' : `Code "${text}" copied!`, 'success');
     }).catch(() => {
       // Fallback for file:// with clipboard restrictions
       const ta = document.createElement('textarea');
@@ -236,7 +237,7 @@ const QRHelper = (() => {
       ta.select();
       document.execCommand('copy');
       ta.remove();
-      Toast.show(kind === 'url' ? '🔗 Join URL copied!' : `📋 Code "${text}" copied!`, 'success');
+      Toast.show(kind === 'url' ? 'Join URL copied!' : `Code "${text}" copied!`, 'success');
     });
   }
 
