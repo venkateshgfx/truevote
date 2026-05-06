@@ -169,40 +169,39 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // ── Load presentations from cloud (cross-browser sync) ────────────────
-    // Merge server presentations with local ones — server is authoritative
-    // for existence; newer updatedAt wins for content.
+    // Cloud is the AUTHORITATIVE source for presentations.
+    // Local-only presentations are NOT uploaded back — if they aren't on
+    // the server it means they were deleted by the presenter and should stay gone.
     const cloudPresentations = await API.fetchPresentations();
-    if (cloudPresentations && cloudPresentations.length > 0) {
-      const localMap = {};
-      (State.get().presentations || []).forEach(p => { localMap[p.id] = p; });
+    if (cloudPresentations !== null) {
+      if (cloudPresentations.length > 0) {
+        // Cloud has presentations — it wins. Merge content by updatedAt.
+        const localMap = {};
+        (State.get().presentations || []).forEach(p => { localMap[p.id] = p; });
 
-      cloudPresentations.forEach(cp => {
-        const lp = localMap[cp.id];
-        // Take whichever is newer; if no local copy, always take cloud
-        if (!lp || new Date(cp.updatedAt) >= new Date(lp.updatedAt || 0)) {
-          localMap[cp.id] = cp;
+        const mergedPresentations = cloudPresentations.map(cp => {
+          const lp = localMap[cp.id];
+          // If local copy is newer (presenter just saved), prefer it; otherwise take cloud
+          return (lp && new Date(lp.updatedAt) > new Date(cp.updatedAt)) ? lp : cp;
+        });
+
+        State.set({ presentations: mergedPresentations }, false);
+
+        // Restore active presentation if needed
+        const st = State.get();
+        if (mergedPresentations.length > 0 && !st.activePresentationId) {
+          State.setActivePresentation(mergedPresentations[0].id);
+        } else if (st.activePresentationId) {
+          const active = mergedPresentations.find(p => p.id === st.activePresentationId);
+          if (active) State.setActivePresentation(active.id);
+          else State.setActivePresentation(mergedPresentations[0].id);
         }
-      });
-
-      const mergedPresentations = Object.values(localMap);
-      State.set({ presentations: mergedPresentations }, false);
-
-      // Upload any local-only presentations to cloud so they're shared
-      const cloudIds = new Set(cloudPresentations.map(p => p.id));
-      mergedPresentations.forEach(p => {
-        if (!cloudIds.has(p.id)) API.savePresentation(p);
-      });
-
-      // Restore active presentation if needed
-      const st = State.get();
-      if (mergedPresentations.length > 0 && !st.activePresentationId) {
-        State.setActivePresentation(mergedPresentations[0].id);
-      } else if (st.activePresentationId) {
-        // Refresh active presentation data from cloud
-        const active = mergedPresentations.find(p => p.id === st.activePresentationId);
-        if (active) State.setActivePresentation(active.id);
+      } else {
+        // Cloud is empty (all deleted) — clear local presentations too
+        State.set({ presentations: [], activePresentationId: null }, false);
       }
     }
+    // If cloudPresentations is null (server unreachable), keep local state as-is
 
     // SSE handlers — all use broadcast=false to prevent shouldSync from
     // writing server data back over saved presentations
@@ -258,17 +257,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     API.on('init', (initState) => {
       // For participants: sync real-time state
       _syncParticipantState(initState);
-      // For presenters: if server has presentations, merge them
-      if (State.get().user?.role === 'presenter' && initState.presentations?.length > 0) {
-        const localMap = {};
-        (State.get().presentations || []).forEach(p => { localMap[p.id] = p; });
-        initState.presentations.forEach(cp => {
-          const lp = localMap[cp.id];
-          if (!lp || new Date(cp.updatedAt) >= new Date(lp.updatedAt || 0)) {
-            localMap[cp.id] = cp;
-          }
-        });
-        State.set({ presentations: Object.values(localMap) }, false);
+      // For presenters: cloud presentations are authoritative — replace local list
+      if (State.get().user?.role === 'presenter') {
+        if (initState.presentations?.length > 0) {
+          // Prefer local copy if it's newer (presenter just saved locally)
+          const localMap = {};
+          (State.get().presentations || []).forEach(p => { localMap[p.id] = p; });
+          const merged = initState.presentations.map(cp => {
+            const lp = localMap[cp.id];
+            return (lp && new Date(lp.updatedAt) > new Date(cp.updatedAt)) ? lp : cp;
+          });
+          State.set({ presentations: merged }, false);
+        } else if (initState.presentations !== undefined) {
+          // Server has no presentations (all deleted) — clear local list
+          State.set({ presentations: [], activePresentationId: null }, false);
+        }
       }
     });
 

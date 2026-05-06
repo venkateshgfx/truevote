@@ -223,9 +223,9 @@ const Participant = (() => {
         <div class="part-star-rating ${!pollOpen ? 'voted' : ''}" id="part-stars">
           ${Array.from({length:maxStars},(_,i)=>`
             <button class="part-star-btn ${i <= myRating ? 'active' : ''}"
-              onclick="Participant._selectStar(${i})"
+              data-star="${i}"
               ${!pollOpen ? 'disabled' : ''}
-              aria-label="${i+1} star">★</button>`).join('')}
+              aria-label="${i+1} star">&#9733;</button>`).join('')}
         </div>`;
 
       // Group results section (hidden by default; shown when toggled)
@@ -233,13 +233,13 @@ const Participant = (() => {
       if (showGroupResults) {
         groupResultsHTML = `
           <div class="part-rating-results">
-            <div class="part-rating-avg-label">Group Average: <strong>${avg.toFixed(1)} ★</strong> from ${total} response${total!==1?'s':''}</div>
+            <div class="part-rating-avg-label">Group Average: <strong>${avg.toFixed(1)} &#9733;</strong> from ${total} response${total!==1?'s':''}</div>
             <div class="part-rating-dist">
               ${Array.from({length:maxStars},(_,i)=>{
                 const star=maxStars-i; const c=counts[star-1]||0;
                 const pct=total>0?Math.round((c/total)*100):0;
                 return `<div class="part-rating-dist-row">
-                  <span>${star}★</span>
+                  <span>${star}&#9733;</span>
                   <div class="mini-bar-track"><div class="mini-bar-fill" style="width:${pct}%;background:#f59e0b"></div></div>
                   <span>${pct}%</span>
                 </div>`;
@@ -250,7 +250,7 @@ const Participant = (() => {
 
       // Toggle button for group results (only if presenter enabled it and user has voted)
       const toggleBtnHTML = voted && slide.showResultsToAudience
-        ? `<button class="btn btn-ghost btn-sm part-results-toggle" onclick="Participant._toggleRatingResults()">
+        ? `<button class="btn btn-ghost btn-sm part-results-toggle" id="part-toggle-results-btn">
             <i data-lucide="${_ratingShowResults ? 'eye-off' : 'bar-chart-2'}" class="icon-sm"></i>
             ${_ratingShowResults ? 'Hide Results' : 'Show Results'}
            </button>`
@@ -277,13 +277,34 @@ const Participant = (() => {
         ${feedbackHTML}
         ${starsHTML}
         ${pollOpen && myRating >= 0 ? `
-          <button class="btn btn-primary btn-lg part-submit-btn" onclick="Participant._submitVote()">
-            Submit Rating (${myRating+1} ★)
+          <button class="btn btn-primary btn-lg part-submit-btn" id="part-rating-submit-btn">
+            Submit Rating (${myRating+1} &#9733;)
           </button>` : ''}
         ${toggleBtnHTML}
         ${groupResultsHTML}
         `}`;
+
       if (typeof lucide !== 'undefined') lucide.createIcons();
+
+      // ── Wire up star clicks via direct JS (never inline onclick) ──
+      const starsEl = document.getElementById('part-stars');
+      if (starsEl && pollOpen) {
+        starsEl.addEventListener('click', function(e) {
+          const btn = e.target.closest('[data-star]');
+          if (!btn || btn.disabled) return;
+          const idx = parseInt(btn.dataset.star, 10);
+          if (!isNaN(idx)) _selectStar(idx);
+        });
+      }
+
+      // ── Wire up submit button ──
+      const submitBtnEl = document.getElementById('part-rating-submit-btn');
+      if (submitBtnEl) submitBtnEl.addEventListener('click', _submitVote);
+
+      // ── Wire up toggle button ──
+      const toggleEl = document.getElementById('part-toggle-results-btn');
+      if (toggleEl) toggleEl.addEventListener('click', _toggleRatingResults);
+
       return;
     }
 
@@ -607,24 +628,9 @@ const Participant = (() => {
 
     selectedOptions = [index];
 
-    // Update star visuals without a full re-render
-    const stars = document.querySelectorAll('.part-star-btn');
-    stars.forEach((btn, i) => btn.classList.toggle('active', i <= index));
-
-    // Update or inject submit button
-    let submitBtn = document.querySelector('.part-submit-btn');
-    if (submitBtn) {
-      submitBtn.innerHTML = `Submit Rating (${index + 1} \u2605)`;
-      submitBtn.disabled = false;
-    } else {
-      submitBtn = document.createElement('button');
-      submitBtn.className = 'btn btn-primary btn-lg part-submit-btn';
-      submitBtn.innerHTML = `Submit Rating (${index + 1} \u2605)`;
-      const starsEl = document.getElementById('part-stars');
-      if (starsEl) starsEl.insertAdjacentElement('afterend', submitBtn);
-    }
-    // Always (re)bind onclick so it works after DOM updates
-    submitBtn.onclick = () => Participant._submitVote();
+    // Re-render — this will show the submit button (myRating >= 0 now)
+    // and re-attach all event listeners including the new star click handler
+    _renderContent();
   }
 
 
