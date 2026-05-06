@@ -16,14 +16,17 @@ const Participant = (() => {
     const user = state.user;
     const hashDisplay = user?.userHash ? user.userHash.slice(0,12) + '…' : '—';
 
+    // Show the presenter's logo if configured, otherwise no logo section
+    const presLogo = state.presSettings?.themeLogo;
+    const logoHTML = presLogo
+      ? `<div class="part-header-logo">
+           <img src="${presLogo}" class="part-header-pres-logo" alt="Presentation logo" />
+         </div>`
+      : `<div class="part-header-logo"></div>`; // empty placeholder for flex spacing
+
     el.innerHTML = `
       <header class="part-header">
-        <div class="part-header-logo">
-          <div class="part-header-logo-icon">
-            <i data-lucide="bar-chart-2" class="icon-sm" style="color:#fff"></i>
-          </div>
-          Slide<span style="color:var(--accent-primary)">Meter</span>
-        </div>
+        ${logoHTML}
         <div class="part-user-info">
           <span class="part-user-email" title="${user?.email || ''}">
             <i data-lucide="user" class="icon-xs"></i> ${user?.email || 'Anonymous'}

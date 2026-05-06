@@ -47,6 +47,14 @@
   flex-shrink: 0;
 }
 
+/* Presenter's custom logo in participant header */
+.part-header-pres-logo {
+  max-height: 32px;
+  max-width: 140px;
+  object-fit: contain;
+  display: block;
+}
+
 .part-user-info {
   display: flex;
   align-items: center;

@@ -62,11 +62,28 @@ const State = (() => {
       Object.assign(_state, patch);
       if (broadcast) _broadcast(patch);
 
-      // Auto-sync slides/votes/pollStatus/sessionCode back into active presentation
-      if ((patch.slides || patch.votes || patch.pollStatus || patch.sessionCode) && _state.activePresentationId) {
+      // Auto-sync back into active presentation on any relevant field change.
+      // Use !== undefined checks — empty {} and [] are falsy so || would miss them.
+      const shouldSync = _state.activePresentationId && (
+        patch.slides          !== undefined ||
+        patch.votes           !== undefined ||
+        patch.pollStatus      !== undefined ||
+        patch.sessionCode     !== undefined ||
+        patch.activeSlideIndex !== undefined
+      );
+
+      if (shouldSync) {
         _state.presentations = _state.presentations.map(p =>
           p.id === _state.activePresentationId
-            ? { ...p, slides: _state.slides, votes: _state.votes, pollStatus: _state.pollStatus, sessionCode: _state.sessionCode, updatedAt: new Date().toISOString() }
+            ? {
+                ...p,
+                slides:           _state.slides,
+                votes:            _state.votes,
+                pollStatus:       _state.pollStatus,
+                sessionCode:      _state.sessionCode,
+                activeSlideIndex: _state.activeSlideIndex,
+                updatedAt:        new Date().toISOString(),
+              }
             : p
         );
       }
@@ -230,10 +247,14 @@ const State = (() => {
       this.set({
         activePresentationId: id,
         sessionCode,
-        slides: pres.slides || [],
-        votes: pres.votes || {},
-        pollStatus: pres.pollStatus || {},
-        activeSlideIndex: 0,
+        slides:      pres.slides      || [],
+        votes:       pres.votes       || {},
+        pollStatus:  pres.pollStatus  || {},
+        // Restore the saved slide index, clamped to valid range
+        activeSlideIndex: Math.min(
+          pres.activeSlideIndex ?? 0,
+          Math.max((pres.slides?.length || 1) - 1, 0)
+        ),
       });
       // Register new session code with server
       if (typeof API !== 'undefined') API.registerSession(sessionCode);

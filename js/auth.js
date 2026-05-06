@@ -98,10 +98,10 @@ const Auth = (() => {
 
           <form class="auth-form" onsubmit="Auth._submitParticipant(event)">
             <div class="form-group">
-              <label class="label" for="join-email">Corporate Email</label>
+              <label class="label" for="join-email">Google mail</label>
               <div class="input-icon-wrap">
                 <span class="input-icon"><i data-lucide="mail" class="icon-sm"></i></span>
-                <input id="join-email" type="email" class="input" placeholder="you@company.com"
+                <input id="join-email" type="email" class="input" placeholder="you@google.com"
                   required autocomplete="email" />
               </div>
             </div>

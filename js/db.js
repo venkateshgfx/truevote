@@ -28,7 +28,26 @@ const DB = (() => {
 
   function load() {
     try {
-      const raw = localStorage.getItem(KEY);
+      // Try the current key first
+      let raw = localStorage.getItem(KEY);
+
+      // ── Migration: recover data saved under the old LivePoll key ──
+      if (!raw) {
+        const OLD_KEY        = 'livepoll_secure_db_v2';
+        const OLD_SEED_FLAG  = 'livepoll_seeded_v1';
+        const oldRaw = localStorage.getItem(OLD_KEY);
+        if (oldRaw) {
+          // Move old data to new key and remove old keys
+          localStorage.setItem(KEY, oldRaw);
+          if (localStorage.getItem(OLD_SEED_FLAG)) {
+            localStorage.setItem(SEEDED_FLAG, '1');
+            localStorage.removeItem(OLD_SEED_FLAG);
+          }
+          localStorage.removeItem(OLD_KEY);
+          raw = oldRaw;
+        }
+      }
+
       if (!raw) return false;
       const data = JSON.parse(raw);
       State.set(data, false);
