@@ -71,9 +71,21 @@ const Editor = (() => {
           </div>
           <div class="slide-list" id="slide-list"></div>
           <div class="nav-footer">
-            <button class="btn btn-ghost btn-sm add-slide-btn" onclick="Editor._addSlide()">
-              ＋ New Slide
-            </button>
+            <div class="nav-add-label">Add Slide</div>
+            <div class="nav-add-btns">
+              <button class="btn btn-ghost btn-sm add-slide-btn" onclick="Editor._addSlide('poll')" title="Poll slide">
+                <i data-lucide="bar-chart-2" class="icon-sm"></i> Poll
+              </button>
+              <button class="btn btn-ghost btn-sm add-slide-btn" onclick="Editor._addSlide('rating')" title="Star rating slide">
+                <i data-lucide="star" class="icon-sm"></i> Rating
+              </button>
+              <button class="btn btn-ghost btn-sm add-slide-btn" onclick="Editor._addSlide('text')" title="Text / info slide">
+                <i data-lucide="type" class="icon-sm"></i> Text
+              </button>
+              <button class="btn btn-ghost btn-sm add-slide-btn" onclick="Editor._addSlide('qr')" title="Session QR slide">
+                <i data-lucide="qr-code" class="icon-sm"></i> QR
+              </button>
+            </div>
           </div>
         </aside>
 
@@ -130,109 +142,165 @@ const Editor = (() => {
           </div>
 
           <div id="inspector-slide-pane" class="${currentTab === 'settings' ? 'hidden' : ''}">
-            <!-- CONTENT -->
+            <!-- SHARED: Question field -->
             <div class="inspector-section">
               <div class="inspector-section-title">
                 <i data-lucide="file-text" class="icon-sm"></i> Content
               </div>
-            <div class="form-group">
-              <label class="label" for="prop-question">Question</label>
-              <textarea id="prop-question" class="textarea" rows="3"
-                oninput="Editor._updateProp('question', this.value)"
-                placeholder="Type your question here…"></textarea>
-            </div>
-
-            <div class="inspector-section-title" style="margin-top:var(--sp-4)">
-              <i data-lucide="list" class="icon-sm"></i> Options
-            </div>
-            <div class="options-list" id="options-list"></div>
-            <button class="btn btn-ghost btn-sm add-option-btn" onclick="Editor._addOption()">
-              ＋ Add Option
-            </button>
-          </div>
-
-          <!-- LOGIC -->
-          <div class="inspector-section">
-            <div class="inspector-section-title">
-              <i data-lucide="sliders" class="icon-sm"></i> Logic
-            </div>
-
-            <div class="toggle-wrap">
-              <div>
-                <div class="toggle-label">Multiple Selection</div>
+              <div class="form-group">
+                <label class="label" for="prop-question">Title / Question</label>
+                <textarea id="prop-question" class="textarea" rows="3"
+                  oninput="Editor._updateProp('question', this.value)"
+                  placeholder="Type your question here…"></textarea>
               </div>
-              <label class="toggle" title="Allow multiple picks">
-                <input type="checkbox" id="toggle-multi" onchange="Editor._updateProp('multiSelect', this.checked)" />
-                <div class="toggle-track"></div>
-                <div class="toggle-thumb"></div>
-              </label>
             </div>
 
-            <div id="max-picks-row" class="form-group hidden" style="margin-top:var(--sp-3)">
-              <label class="label" for="prop-max-picks">Max Picks Allowed</label>
-              <select id="prop-max-picks" class="select"
-                onchange="Editor._updateProp('maxPicks', parseInt(this.value))">
-                ${[2,3,4,5,6,7,8].map(n=>`<option value="${n}">${n} options</option>`).join('')}
-              </select>
-            </div>
-
-            <div class="toggle-wrap">
-              <div>
-                <div class="toggle-label">Timer Limit</div>
+            <!-- POLL pane -->
+            <div id="inspector-poll-pane">
+              <div class="inspector-section-title" style="margin-top:var(--sp-4)">
+                <i data-lucide="list" class="icon-sm"></i> Options
               </div>
-              <label class="toggle">
-                <input type="checkbox" id="toggle-timer" onchange="Editor._updateProp('timerEnabled', this.checked)" />
-                <div class="toggle-track"></div>
-                <div class="toggle-thumb"></div>
-              </label>
+              <div class="options-list" id="options-list"></div>
+              <button class="btn btn-ghost btn-sm add-option-btn" onclick="Editor._addOption()">
+                ＋ Add Option
+              </button>
+
+              <!-- LOGIC -->
+              <div class="inspector-section">
+                <div class="inspector-section-title">
+                  <i data-lucide="sliders" class="icon-sm"></i> Logic
+                </div>
+                <div class="toggle-wrap">
+                  <div><div class="toggle-label">Multiple Selection</div></div>
+                  <label class="toggle" title="Allow multiple picks">
+                    <input type="checkbox" id="toggle-multi" onchange="Editor._updateProp('multiSelect', this.checked)" />
+                    <div class="toggle-track"></div><div class="toggle-thumb"></div>
+                  </label>
+                </div>
+                <div id="max-picks-row" class="form-group hidden" style="margin-top:var(--sp-3)">
+                  <label class="label" for="prop-max-picks">Max Picks Allowed</label>
+                  <select id="prop-max-picks" class="select" onchange="Editor._updateProp('maxPicks', parseInt(this.value))">
+                    ${[2,3,4,5,6,7,8].map(n=>`<option value="${n}">${n} options</option>`).join('')}
+                  </select>
+                </div>
+                <div class="toggle-wrap">
+                  <div><div class="toggle-label">Timer Limit</div></div>
+                  <label class="toggle">
+                    <input type="checkbox" id="toggle-timer" onchange="Editor._updateProp('timerEnabled', this.checked)" />
+                    <div class="toggle-track"></div><div class="toggle-thumb"></div>
+                  </label>
+                </div>
+                <div id="timer-seconds-row" class="timer-input-row hidden">
+                  <input type="number" id="prop-timer" class="input" min="5" max="600" value="60"
+                    style="max-width:90px"
+                    onchange="Editor._updateProp('timerSeconds', parseInt(this.value) || 60)" />
+                  <span class="text-sm text-muted">seconds</span>
+                </div>
+                <div class="toggle-wrap">
+                  <div><div class="toggle-label">Lock Submissions</div></div>
+                  <label class="toggle">
+                    <input type="checkbox" id="toggle-locked" onchange="Editor._updateProp('locked', this.checked)" />
+                    <div class="toggle-track"></div><div class="toggle-thumb"></div>
+                  </label>
+                </div>
+                <div class="toggle-wrap">
+                  <div><div class="toggle-label">Show Chart on Mobile Devices</div></div>
+                  <label class="toggle">
+                    <input type="checkbox" id="toggle-show-results" onchange="Editor._updateProp('showResultsToAudience', this.checked)" />
+                    <div class="toggle-track"></div><div class="toggle-thumb"></div>
+                  </label>
+                </div>
+                <!-- LAYOUT -->
+                <div class="inspector-section">
+                  <div class="inspector-section-title">
+                    <i data-lucide="layout-dashboard" class="icon-sm"></i> Chart Layout
+                  </div>
+                  <div class="layout-picker" id="layout-picker">
+                    <button class="layout-option active" data-layout="bars" onclick="Editor._setLayout('bars')">
+                      <span class="layout-option-icon"><i data-lucide="bar-chart-2" class="icon-md"></i></span>Bars
+                    </button>
+                    <button class="layout-option" data-layout="donut" onclick="Editor._setLayout('donut')">
+                      <span class="layout-option-icon"><i data-lucide="pie-chart" class="icon-md"></i></span>Donut
+                    </button>
+                    <button class="layout-option" data-layout="pie" onclick="Editor._setLayout('pie')">
+                      <span class="layout-option-icon"><i data-lucide="chart-pie" class="icon-md"></i></span>Pie
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div id="timer-seconds-row" class="timer-input-row hidden">
-              <input type="number" id="prop-timer" class="input" min="5" max="600" value="60"
-                style="max-width:90px"
-                onchange="Editor._updateProp('timerSeconds', parseInt(this.value) || 60)" />
-              <span class="text-sm text-muted">seconds</span>
+            <!-- RATING pane -->
+            <div id="inspector-rating-pane" class="hidden">
+              <div class="inspector-section">
+                <div class="inspector-section-title">
+                  <i data-lucide="star" class="icon-sm"></i> Star Rating Settings
+                </div>
+                <div class="inspector-info-box">
+                  <i data-lucide="info" class="icon-sm"></i>
+                  Participants will rate with 1–5 stars. Results show average score and distribution.
+                </div>
+                <div class="toggle-wrap" style="margin-top:var(--sp-3)">
+                  <div><div class="toggle-label">Timer Limit</div></div>
+                  <label class="toggle">
+                    <input type="checkbox" id="toggle-timer" onchange="Editor._updateProp('timerEnabled', this.checked)" />
+                    <div class="toggle-track"></div><div class="toggle-thumb"></div>
+                  </label>
+                </div>
+                <div class="toggle-wrap">
+                  <div><div class="toggle-label">Lock Submissions</div></div>
+                  <label class="toggle">
+                    <input type="checkbox" id="toggle-locked" onchange="Editor._updateProp('locked', this.checked)" />
+                    <div class="toggle-track"></div><div class="toggle-thumb"></div>
+                  </label>
+                </div>
+                <div class="toggle-wrap">
+                  <div><div class="toggle-label">Show Results to Audience</div></div>
+                  <label class="toggle">
+                    <input type="checkbox" id="toggle-show-results" onchange="Editor._updateProp('showResultsToAudience', this.checked)" />
+                    <div class="toggle-track"></div><div class="toggle-thumb"></div>
+                  </label>
+                </div>
+              </div>
             </div>
 
-            <div class="toggle-wrap">
-              <div>
-                <div class="toggle-label">Lock Submissions</div>
+            <!-- TEXT pane -->
+            <div id="inspector-text-pane" class="hidden">
+              <div class="inspector-section">
+                <div class="inspector-section-title">
+                  <i data-lucide="type" class="icon-sm"></i> Text Content
+                </div>
+                <div class="inspector-info-box">
+                  <i data-lucide="info" class="icon-sm"></i>
+                  This slide is for displaying information only. No voting occurs.
+                </div>
+                <div class="form-group" style="margin-top:var(--sp-3)">
+                  <label class="label" for="prop-text-body">Body Text</label>
+                  <textarea id="prop-text-body" class="textarea" rows="6"
+                    oninput="Editor._updateProp('body', this.value)"
+                    placeholder="Enter the content to display on this slide…"></textarea>
+                </div>
               </div>
-              <label class="toggle">
-                <input type="checkbox" id="toggle-locked" onchange="Editor._updateProp('locked', this.checked)" />
-                <div class="toggle-track"></div>
-                <div class="toggle-thumb"></div>
-              </label>
             </div>
 
-            <div class="toggle-wrap">
-              <div>
-                <div class="toggle-label">Show Chart on Mobile Devices</div>
+            <!-- QR pane -->
+            <div id="inspector-qr-pane" class="hidden">
+              <div class="inspector-section">
+                <div class="inspector-section-title">
+                  <i data-lucide="qr-code" class="icon-sm"></i> Session QR Slide
+                </div>
+                <div class="inspector-info-box">
+                  <i data-lucide="info" class="icon-sm"></i>
+                  Shows a large QR code with the session join link so latecomers can scan and join easily.
+                </div>
+                <div class="form-group" style="margin-top:var(--sp-3)">
+                  <label class="label" for="prop-qr-subtitle">Subtitle</label>
+                  <textarea id="prop-qr-subtitle" class="textarea" rows="2"
+                    oninput="Editor._updateProp('subtitle', this.value)"
+                    placeholder="e.g. Scan to join the session on your phone"></textarea>
+                </div>
               </div>
-              <label class="toggle">
-                <input type="checkbox" id="toggle-show-results" onchange="Editor._updateProp('showResultsToAudience', this.checked)" />
-                <div class="toggle-track"></div>
-                <div class="toggle-thumb"></div>
-              </label>
             </div>
-            <!-- LAYOUT -->
-            <div class="inspector-section">
-              <div class="inspector-section-title">
-                <i data-lucide="layout-dashboard" class="icon-sm"></i> Chart Layout
-              </div>
-              <div class="layout-picker" id="layout-picker">
-                <button class="layout-option active" data-layout="bars" onclick="Editor._setLayout('bars')">
-                  <span class="layout-option-icon"><i data-lucide="bar-chart-2" class="icon-md"></i></span>Bars
-                </button>
-                <button class="layout-option" data-layout="donut" onclick="Editor._setLayout('donut')">
-                  <span class="layout-option-icon"><i data-lucide="pie-chart" class="icon-md"></i></span>Donut
-                </button>
-                <button class="layout-option" data-layout="pie" onclick="Editor._setLayout('pie')">
-                  <span class="layout-option-icon"><i data-lucide="chart-pie" class="icon-md"></i></span>Pie
-                </button>
-            </div>
-          </div>
-          </div>
           </div>
 
           <div id="inspector-settings-pane" class="${currentTab === 'slide' ? 'hidden' : ''}">
@@ -336,15 +404,20 @@ const Editor = (() => {
     state.slides.forEach((slide, i) => {
       const status = state.pollStatus[slide.id] || 'pending';
       const votes = State.getTotalVotes(slide.id);
+      const slideType = slide.type || 'poll';
+      const typeBadge = slideType !== 'poll'
+        ? `<span class="slide-thumb-type ${slideType}">${slideType}</span>`
+        : '';
       const el = document.createElement('div');
       el.className = `slide-thumb ${i === state.activeSlideIndex ? 'active' : ''}`;
       el.onclick = () => { State.set({ activeSlideIndex: i }); Editor._refresh(); };
       el.innerHTML = `
         <div class="slide-thumb-number">${i + 1}</div>
         <div class="slide-thumb-status ${status}"></div>
+        ${typeBadge}
         <div class="slide-thumb-question">${_truncate(slide.question, 50)}</div>
         <div style="font-size:9px;color:var(--text-muted);display:flex;align-items:center;gap:2px">
-          <i data-lucide="check-square" style="width:9px;height:9px"></i> ${votes}
+          ${slideType === 'poll' || slideType === 'rating' ? `<i data-lucide="check-square" style="width:9px;height:9px"></i> ${votes}` : ''}
         </div>
         <button class="slide-thumb-delete" onclick="event.stopPropagation(); Editor._deleteSlide(${i})" title="Delete slide">
           <i data-lucide="x" style="width:10px;height:10px"></i>
@@ -354,6 +427,7 @@ const Editor = (() => {
       el.style.background = slide.bgColor || '#1a2547';
       list.appendChild(el);
     });
+
     if (typeof lucide !== 'undefined') lucide.createIcons({ nodes: Array.from(list.querySelectorAll('[data-lucide]')) });
   }
 
@@ -402,7 +476,55 @@ const Editor = (() => {
       logoEl.classList.add('hidden');
     }
 
-    // Poll status button
+    // ── Slide-type specific rendering ──
+    const slideType = slide.type || 'poll';
+
+    if (slideType === 'text') {
+      // Text slide: show body, hide poll button & vote count
+      if (chartArea) chartArea.innerHTML = `<div class="canvas-text-body" style="color:${state.presSettings?.themeTextColor||'#ffffff'};">${_escAttr(slide.body||'')}</div>`;
+      if (pollBtn) pollBtn.style.display = 'none';
+      if (voteNum) voteNum.parentElement.style.display = 'none';
+      return;
+    }
+
+    if (slideType === 'qr') {
+      // QR slide: render live QR
+      if (pollBtn) pollBtn.style.display = 'none';
+      if (voteNum) voteNum.parentElement.style.display = 'none';
+      if (chartArea) {
+        chartArea.innerHTML = `<div class="canvas-qr-preview" id="canvas-qr-inner"></div>`;
+        const qrEl = document.getElementById('canvas-qr-inner');
+        if (qrEl) QRHelper.renderPresQR(qrEl, state.sessionCode || '------', 120);
+      }
+      return;
+    }
+
+    if (slideType === 'rating') {
+      // Rating slide: show star distribution preview
+      if (pollBtn) pollBtn.style.display = '';
+      if (voteNum) voteNum.parentElement.style.display = '';
+      const counts = State.getVoteCounts(slide.id);
+      const total = State.getTotalVotes(slide.id);
+      if (chartArea) _renderRatingChart(chartArea, slide, counts, total, state.presSettings?.themeTextColor || '#ffffff');
+      const status = state.pollStatus[slide.id] || 'pending';
+      pollBtn.className = `canvas-overlay-btn poll-${status}`;
+      if (status === 'open') {
+        pollBtn.innerHTML = '<i data-lucide="circle-stop" class="icon-md"></i> Poll Open — Click to Stop';
+      } else if (status === 'closed') {
+        pollBtn.innerHTML = '<i data-lucide="rotate-ccw" class="icon-md"></i> Poll Closed — Click to Reopen';
+      } else {
+        pollBtn.innerHTML = '<i data-lucide="play" class="icon-md"></i> Start Rating';
+      }
+      if (typeof lucide !== 'undefined') lucide.createIcons({ nodes: [pollBtn] });
+      if (voteNum) voteNum.textContent = total;
+      const counts2 = State.getVoteCounts(slide.id);
+      _updateStats(slide, state, counts2, total);
+      return;
+    }
+
+    // Default poll slide
+    if (pollBtn) pollBtn.style.display = '';
+    if (voteNum) voteNum.parentElement.style.display = '';
     const status = state.pollStatus[slide.id] || 'pending';
     pollBtn.className = `canvas-overlay-btn poll-${status}`;
     if (status === 'open') {
@@ -414,12 +536,9 @@ const Editor = (() => {
     }
     if (typeof lucide !== 'undefined') lucide.createIcons({ nodes: [pollBtn] });
 
-
-    // Vote count
     const total = State.getTotalVotes(slide.id);
     if (voteNum) voteNum.textContent = total;
 
-    // Chart
     const counts = State.getVoteCounts(slide.id);
     const visColours = state.presSettings?.themeVisColours;
     const txtColor = state.presSettings?.themeTextColor || '#ffffff';
@@ -433,6 +552,32 @@ const Editor = (() => {
     }
 
     _updateStats(slide, state, counts, total);
+  }
+
+  function _renderRatingChart(container, slide, counts, total, textColor) {
+    const maxStars = slide.maxStars || 5;
+    const avg = total > 0
+      ? counts.reduce((s, c, i) => s + c * (i + 1), 0) / total
+      : 0;
+    container.innerHTML = `
+      <div class="canvas-rating-preview">
+        <div class="canvas-rating-avg" style="color:${textColor}">${avg > 0 ? avg.toFixed(1) : '—'}</div>
+        <div class="canvas-rating-stars">${Array.from({length:maxStars},(_,i)=>`<span class="canvas-star ${i < Math.round(avg) ? 'filled':''}">★</span>`).join('')}</div>
+        <div class="canvas-rating-votes" style="color:${textColor}">${total} rating${total!==1?'s':''}</div>
+        <div class="canvas-rating-bars">
+          ${Array.from({length:maxStars},(_,i)=>{
+            const star = maxStars - i;
+            const c = counts[star-1]||0;
+            const pct = total>0 ? Math.round((c/total)*100) : 0;
+            return `<div class="canvas-rating-row">
+              <span class="canvas-rating-row-label" style="color:${textColor}">${star}★</span>
+              <div class="canvas-rating-row-track"><div class="canvas-rating-row-fill" style="width:${pct}%;background:#f59e0b"></div></div>
+              <span class="canvas-rating-row-pct" style="color:${textColor}">${pct}%</span>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+    `;
   }
 
   function _updateStats(slide, state, counts, total) {
@@ -459,7 +604,8 @@ const Editor = (() => {
   // ── Inspector ──
   function _populateInspector() {
     const state = State.get();
-    
+    const slide = State.getActiveSlide();
+
     // Global Settings (independent of active slide)
     const bgColor = document.getElementById('prop-bg-color');
     const bgHex = document.getElementById('prop-bg-hex');
@@ -497,32 +643,50 @@ const Editor = (() => {
     _setToggle('pres-show-results', state.presSettings?.showResults);
 
     // Slide-specific Settings
-    const slide = State.getActiveSlide();
     if (!slide) return;
 
     const qEl = document.getElementById('prop-question');
     if (qEl) qEl.value = slide.question || '';
 
-    _renderOptionsList(slide);
+    const slideType = slide.type || 'poll';
 
-    _setToggle('toggle-multi', slide.multiSelect);
-    _setToggle('toggle-timer', slide.timerEnabled);
-    _setToggle('toggle-locked', slide.locked);
-    _setToggle('toggle-show-results', slide.showResultsToAudience);
+    // Show/hide slide-type-specific inspector panels
+    const pollPane = document.getElementById('inspector-poll-pane');
+    const ratingPane = document.getElementById('inspector-rating-pane');
+    const textPane = document.getElementById('inspector-text-pane');
+    const qrPane = document.getElementById('inspector-qr-pane');
 
-    document.getElementById('max-picks-row')?.classList.toggle('hidden', !slide.multiSelect);
-    document.getElementById('timer-seconds-row')?.classList.toggle('hidden', !slide.timerEnabled);
+    if (pollPane)   pollPane.classList.toggle('hidden', slideType !== 'poll');
+    if (ratingPane) ratingPane.classList.toggle('hidden', slideType !== 'rating');
+    if (textPane)   textPane.classList.toggle('hidden', slideType !== 'text');
+    if (qrPane)     qrPane.classList.toggle('hidden', slideType !== 'qr');
 
-    const maxPicks = document.getElementById('prop-max-picks');
-    if (maxPicks) maxPicks.value = slide.maxPicks || 2;
-
-    const timer = document.getElementById('prop-timer');
-    if (timer) timer.value = slide.timerSeconds || 60;
-
-    // Layout picker
-    document.querySelectorAll('.layout-option').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.layout === slide.layout);
-    });
+    if (slideType === 'poll') {
+      _renderOptionsList(slide);
+      _setToggle('toggle-multi', slide.multiSelect);
+      _setToggle('toggle-timer', slide.timerEnabled);
+      _setToggle('toggle-locked', slide.locked);
+      _setToggle('toggle-show-results', slide.showResultsToAudience);
+      document.getElementById('max-picks-row')?.classList.toggle('hidden', !slide.multiSelect);
+      document.getElementById('timer-seconds-row')?.classList.toggle('hidden', !slide.timerEnabled);
+      const maxPicks = document.getElementById('prop-max-picks');
+      if (maxPicks) maxPicks.value = slide.maxPicks || 2;
+      const timer = document.getElementById('prop-timer');
+      if (timer) timer.value = slide.timerSeconds || 60;
+      document.querySelectorAll('.layout-option').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.layout === slide.layout);
+      });
+    } else if (slideType === 'rating') {
+      _setToggle('toggle-timer', slide.timerEnabled);
+      _setToggle('toggle-locked', slide.locked);
+      _setToggle('toggle-show-results', slide.showResultsToAudience);
+    } else if (slideType === 'text') {
+      const bodyEl = document.getElementById('prop-text-body');
+      if (bodyEl) bodyEl.value = slide.body || '';
+    } else if (slideType === 'qr') {
+      const subtitleEl = document.getElementById('prop-qr-subtitle');
+      if (subtitleEl) subtitleEl.value = slide.subtitle || '';
+    }
   }
 
   function _renderOptionsList(slide) {
@@ -642,10 +806,11 @@ const Editor = (() => {
   }
 
   // ── Slide Management ──
-  function _addSlide() {
-    State.addSlide();
+  function _addSlide(type = 'poll') {
+    State.addSlide(type);
     _refresh();
-    Toast.show('New slide added', 'success');
+    const labels = { poll: 'Poll slide', rating: 'Rating slide', text: 'Text slide', qr: 'QR slide' };
+    Toast.show(`${labels[type] || 'Slide'} added`, 'success');
   }
 
   function _deleteSlide(index) {

@@ -140,6 +140,134 @@ const Participant = (() => {
     const userHash = state.user?.userHash || '';
     const slideVotes = state.votes[slide.id] || {};
     const alreadyVoted = !!slideVotes[userHash];
+    const slideType = slide.type || 'poll';
+
+    // ── Text slide ── (information only, no voting)
+    if (slideType === 'text') {
+      content.innerHTML = `
+        <div class="part-slide-info">
+          <span class="part-slide-num">Slide ${state.activeSlideIndex + 1} of ${state.slides.length}</span>
+          <span class="part-poll-status-badge" style="background:rgba(99,102,241,0.15);color:#a5b4fc">
+            <span class="status-badge-dot" style="background:#6366f1"></span> Info
+          </span>
+        </div>
+        <div class="part-text-slide">
+          <div class="part-text-title">${_escHtml(slide.question)}</div>
+          <div class="part-text-body">${_escHtml(slide.body || '')}</div>
+        </div>`;
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+      return;
+    }
+
+    // ── QR slide ── (shows join QR code)
+    if (slideType === 'qr') {
+      content.innerHTML = `
+        <div class="part-slide-info">
+          <span class="part-slide-num">Slide ${state.activeSlideIndex + 1} of ${state.slides.length}</span>
+        </div>
+        <div class="part-qr-slide">
+          <div class="part-qr-title">${_escHtml(slide.question)}</div>
+          <div class="part-qr-subtitle">${_escHtml(slide.subtitle || '')}</div>
+          <div class="part-qr-box" id="part-qr-code-box"></div>
+          <div class="part-qr-code-label">${state.sessionCode || '------'}</div>
+        </div>`;
+      requestAnimationFrame(() => {
+        const box = document.getElementById('part-qr-code-box');
+        if (box) QRHelper.renderPresQR(box, state.sessionCode || '------', 200);
+      });
+      return;
+    }
+
+    // ── Rating slide ──
+    if (slideType === 'rating') {
+      // Reset state if slide changed
+      if (lastSlideId !== slide.id) {
+        selectedOptions = [];
+        hasVoted = alreadyVoted;
+        lastSlideId = slide.id;
+      } else {
+        hasVoted = hasVoted || alreadyVoted;
+      }
+      lastPollStatus = status;
+
+      const maxStars = slide.maxStars || 5;
+      const counts = State.getVoteCounts(slide.id);
+      const total = State.getTotalVotes(slide.id);
+      const showResults = slide.showResultsToAudience && (hasVoted || alreadyVoted);
+      const avg = total > 0 ? counts.reduce((s,c,i)=>s+c*(i+1),0)/total : 0;
+      const myRating = alreadyVoted ? (slideVotes[userHash]?.options?.[0] ?? -1) : (selectedOptions[0] ?? -1);
+      const pollOpen = status === 'open' && !hasVoted && !alreadyVoted && !slide.locked;
+
+      let feedbackHTML = '';
+      if (alreadyVoted || hasVoted) {
+        feedbackHTML = `<div class="part-feedback success">
+          <span class="part-feedback-icon"><i data-lucide="check-circle" class="icon-md"></i></span>
+          <span>Your rating has been recorded. Thank you!</span>
+        </div>`;
+      } else if (status === 'closed' && !hasVoted) {
+        feedbackHTML = `<div class="part-feedback error">
+          <span class="part-feedback-icon"><i data-lucide="lock" class="icon-md"></i></span>
+          <span>Rating period is now closed.</span>
+        </div>`;
+      }
+
+      let resultsHTML = '';
+      if (showResults) {
+        resultsHTML = `
+          <div class="part-rating-results">
+            <div class="part-rating-avg-label">Average: <strong>${avg.toFixed(1)} ★</strong> (${total} vote${total!==1?'s':''})</div>
+            <div class="part-rating-dist">
+              ${Array.from({length:maxStars},(_,i)=>{
+                const star=maxStars-i; const c=counts[star-1]||0;
+                const pct=total>0?Math.round((c/total)*100):0;
+                return `<div class="part-rating-dist-row">
+                  <span>${star}★</span>
+                  <div class="mini-bar-track"><div class="mini-bar-fill" style="width:${pct}%;background:#f59e0b"></div></div>
+                  <span>${pct}%</span>
+                </div>`;
+              }).join('')}
+            </div>
+          </div>`;
+      }
+
+      content.innerHTML = `
+        <div class="part-slide-info">
+          <span class="part-slide-num">Slide ${state.activeSlideIndex + 1} of ${state.slides.length}</span>
+          <span class="part-poll-status-badge ${status}">
+            <span class="status-badge-dot"></span>
+            ${status === 'open' ? 'Rating Open' : status === 'closed' ? 'Rating Closed' : 'Not Started'}
+          </span>
+        </div>
+        ${status === 'pending' ? `<div class="part-waiting" style="min-height:50vh">
+          <div class="waiting-animation"><div class="waiting-ring"></div><div class="waiting-ring"></div><div class="waiting-ring"></div>
+            <div class="waiting-icon"><i data-lucide="star" class="icon-xl" style="color:var(--text-muted)"></i></div>
+          </div>
+          <div class="waiting-title">Waiting for Presenter</div>
+          <div class="waiting-subtitle">${_escHtml(slide.question)}</div>
+          <div class="waiting-pulse-dots"><div class="waiting-dot"></div><div class="waiting-dot"></div><div class="waiting-dot"></div></div>
+        </div>` : `
+        <div class="part-question">${_escHtml(slide.question)}</div>
+        ${feedbackHTML}
+        <div class="part-star-rating ${!pollOpen ? 'voted' : ''}" id="part-stars">
+          ${Array.from({length:maxStars},(_,i)=>`
+            <button class="part-star-btn ${i <= myRating ? 'active' : ''}"
+              onclick="Participant._selectStar(${i})"
+              ${!pollOpen ? 'disabled' : ''}
+              aria-label="${i+1} star">★</button>`).join('')}
+        </div>
+        ${pollOpen && myRating >= 0 ? `
+          <button class="btn btn-primary btn-lg part-submit-btn" onclick="Participant._submitVote()">
+            Submit Rating (${myRating+1} ★)
+          </button>` : ''}
+        ${resultsHTML}
+        `}`;
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+      return;
+    }
+
+    // ── Default: poll slide (existing logic) ──
+    // Reset local state if slide changed
+
 
     // Reset local state if slide changed
     if (lastSlideId !== slide.id) {
@@ -441,9 +569,41 @@ const Participant = (() => {
     });
   }
 
+  function _selectStar(index) {
+    const state = State.get();
+    const slide = State.getActiveSlide();
+    if (!slide || slide.type !== 'rating') return;
+    const status = state.pollStatus[slide.id] || 'pending';
+    const userHash = state.user?.userHash || '';
+    const alreadyVoted = !!(state.votes[slide.id] || {})[userHash];
+    if (hasVoted || alreadyVoted || status !== 'open' || slide.locked) return;
+
+    selectedOptions = [index];
+
+    // Update star visuals
+    const stars = document.querySelectorAll('.part-star-btn');
+    stars.forEach((btn, i) => btn.classList.toggle('active', i <= index));
+
+    // Show/update submit button
+    const existing = document.querySelector('.part-submit-btn');
+    if (existing) {
+      existing.textContent = `Submit Rating (${index + 1} ★)`;
+      existing.disabled = false;
+    } else {
+      const starsEl = document.getElementById('part-stars');
+      if (starsEl) {
+        const submitBtn = document.createElement('button');
+        submitBtn.className = 'btn btn-primary btn-lg part-submit-btn';
+        submitBtn.textContent = `Submit Rating (${index + 1} ★)`;
+        submitBtn.onclick = () => Participant._submitVote();
+        starsEl.insertAdjacentElement('afterend', submitBtn);
+      }
+    }
+  }
+
   function _escHtml(str) {
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
 
-  return { render, _selectOption, _submitVote };
+  return { render, _selectOption, _selectStar, _submitVote };
 })();

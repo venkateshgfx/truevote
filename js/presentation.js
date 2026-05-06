@@ -189,8 +189,90 @@ const Presentation = (() => {
       else logoEl.classList.add('hidden');
     }
 
-    // Chart
+    const slideType = slide.type || 'poll';
     const chartZone = document.getElementById('pres-chart-zone');
+    const pollBtn = document.getElementById('pres-poll-btn');
+    const voteCounter = document.getElementById('pres-vote-counter');
+
+    // ── Text slide ──
+    if (slideType === 'text') {
+      if (pollBtn) pollBtn.style.display = 'none';
+      if (voteCounter) voteCounter.style.display = 'none';
+      if (chartZone) {
+        chartZone.innerHTML = `<div class="pres-text-body" style="color:${state.presSettings?.themeTextColor||'#ffffff'}">${_escHtml(slide.body||'')}</div>`;
+      }
+      _updateNav(state);
+      return;
+    }
+
+    // ── QR slide ──
+    if (slideType === 'qr') {
+      if (pollBtn) pollBtn.style.display = 'none';
+      if (voteCounter) voteCounter.style.display = 'none';
+      if (chartZone) {
+        chartZone.innerHTML = `
+          <div class="pres-qr-slide-wrap">
+            <div class="pres-qr-slide-box" id="pres-qr-slide-inner"></div>
+            <div class="pres-qr-slide-subtitle" style="color:${state.presSettings?.themeTextColor||'#ffffff'}">${_escHtml(slide.subtitle||'')}</div>
+            <div class="pres-qr-slide-code" style="color:${state.presSettings?.themeTextColor||'#ffffff'}">${state.sessionCode||'------'}</div>
+          </div>`;
+        requestAnimationFrame(() => {
+          const box = document.getElementById('pres-qr-slide-inner');
+          if (box) QRHelper.renderPresQR(box, state.sessionCode || '------', 280);
+        });
+      }
+      _updateNav(state);
+      return;
+    }
+
+    // ── Rating slide ──
+    if (slideType === 'rating') {
+      if (pollBtn) pollBtn.style.display = '';
+      if (voteCounter) voteCounter.style.display = '';
+      const counts = State.getVoteCounts(slide.id);
+      const total = State.getTotalVotes(slide.id);
+      if (chartZone) {
+        const maxStars = slide.maxStars || 5;
+        const avg = total > 0 ? counts.reduce((s,c,i)=>s+c*(i+1),0)/total : 0;
+        const txtColor = state.presSettings?.themeTextColor || '#ffffff';
+        chartZone.innerHTML = `
+          <div class="pres-rating-wrap">
+            <div class="pres-rating-avg" style="color:${txtColor}">${avg>0?avg.toFixed(1):'—'}</div>
+            <div class="pres-rating-stars">
+              ${Array.from({length:maxStars},(_,i)=>`<span class="pres-star ${i<Math.round(avg)?'filled':''}">★</span>`).join('')}
+            </div>
+            <div class="pres-rating-total" style="color:${txtColor}">${total} rating${total!==1?'s':''}</div>
+            <div class="pres-rating-bars">
+              ${Array.from({length:maxStars},(_,i)=>{
+                const star=maxStars-i; const c=counts[star-1]||0;
+                const pct=total>0?Math.round((c/total)*100):0;
+                return `<div class="pres-rating-row">
+                  <span class="pres-rating-lbl" style="color:${txtColor}">${star}★</span>
+                  <div class="pres-rating-track"><div class="pres-rating-fill" style="width:${pct}%"></div></div>
+                  <span class="pres-rating-pct" style="color:${txtColor}">${pct}%</span>
+                </div>`;
+              }).join('')}
+            </div>
+          </div>`;
+      }
+      const voteNum = document.getElementById('pres-vote-num');
+      if (voteNum) voteNum.textContent = total;
+      // Poll button
+      const status2 = state.pollStatus[slide.id] || 'pending';
+      if (pollBtn) {
+        if (status2 === 'open') { pollBtn.innerHTML = '<i data-lucide="square" class="icon-sm"></i> Stop Rating'; pollBtn.className = 'pres-nav-poll-btn stop'; }
+        else { pollBtn.innerHTML = '<i data-lucide="star" class="icon-sm"></i> Start Rating'; pollBtn.className = 'pres-nav-poll-btn start'; }
+        if (typeof lucide !== 'undefined') lucide.createIcons({ nodes: [pollBtn] });
+      }
+      _updateNav(state);
+      return;
+    }
+
+    // ── Default poll slide ──
+    if (pollBtn) pollBtn.style.display = '';
+    if (voteCounter) voteCounter.style.display = '';
+
+    // Chart
     if (chartZone) {
       if (!state.presSettings.showResults) {
         chartZone.style.opacity = '0';
@@ -223,7 +305,6 @@ const Presentation = (() => {
     }
 
     // Nav poll button
-    const pollBtn = document.getElementById('pres-poll-btn');
     if (pollBtn) {
       if (status === 'open') {
         pollBtn.innerHTML = '<i data-lucide="square" class="icon-sm"></i> Stop Poll';
@@ -235,7 +316,23 @@ const Presentation = (() => {
       if (typeof lucide !== 'undefined') lucide.createIcons({ nodes: [pollBtn] });
     }
 
-    // Nav buttons
+    // Timer
+    if (slide.timerEnabled && status === 'open' && timerRemaining <= 0) {
+      _startTimer(slide.timerSeconds);
+    } else if (status !== 'open') {
+      _stopTimer();
+    }
+
+    _updateNav(state);
+
+    // Sidebar sync
+    const modePct = document.getElementById('mode-pct');
+    const modeCnt = document.getElementById('mode-cnt');
+    if (modePct) modePct.classList.toggle('active', state.presSettings.displayMode === 'percent');
+    if (modeCnt) modeCnt.classList.toggle('active', state.presSettings.displayMode === 'count');
+  }
+
+  function _updateNav(state) {
     const prevBtn = document.getElementById('pres-prev-btn');
     const nextBtn = document.getElementById('pres-next-btn');
     const counter = document.getElementById('pres-nav-counter');
@@ -244,40 +341,27 @@ const Presentation = (() => {
     if (nextBtn) nextBtn.disabled = idx === state.slides.length - 1;
     if (counter) counter.textContent = `${idx + 1} / ${state.slides.length}`;
 
-    // QR Code sidebar toggle & render
+    // QR Code sidebar toggle & render (only for non-QR-slide types)
+    const slide = State.getActiveSlide();
+    const slideType = slide?.type || 'poll';
     const presRight = document.getElementById('pres-right');
-    if (presRight) presRight.style.display = state.presSettings.showQR ? 'flex' : 'none';
+    if (presRight) presRight.style.display = (state.presSettings.showQR && slideType !== 'qr') ? 'flex' : 'none';
     const qrBox = document.getElementById('pres-qr-box');
-    if (qrBox && state.presSettings.showQR) {
+    if (qrBox && state.presSettings.showQR && slideType !== 'qr') {
       const joinUrl = QRHelper.getJoinUrl(state.sessionCode);
       QRHelper.renderPresQR(qrBox, state.sessionCode, 200);
-      // Populate URL text
       const urlEl = document.getElementById('pres-qr-url');
       if (urlEl) {
-        // Show shortened URL: hostname + path
-        try {
-          const u = new URL(joinUrl);
-          urlEl.textContent = u.host + u.pathname;
-        } catch (e) {
-          urlEl.textContent = joinUrl.replace(/^https?:\/\//, '').split('?')[0];
-        }
+        try { const u = new URL(joinUrl); urlEl.textContent = u.host + u.pathname; }
+        catch { urlEl.textContent = joinUrl.replace(/^https?:\/\//, '').split('?')[0]; }
       }
       const codeEl = document.getElementById('pres-qr-session-code');
       if (codeEl) codeEl.textContent = state.sessionCode || '------';
     }
+  }
 
-    // Timer
-    if (slide.timerEnabled && status === 'open' && timerRemaining <= 0) {
-      _startTimer(slide.timerSeconds);
-    } else if (status !== 'open') {
-      _stopTimer();
-    }
-
-    // Sidebar sync
-    const modePct = document.getElementById('mode-pct');
-    const modeCnt = document.getElementById('mode-cnt');
-    if (modePct) modePct.classList.toggle('active', state.presSettings.displayMode === 'percent');
-    if (modeCnt) modeCnt.classList.toggle('active', state.presSettings.displayMode === 'count');
+  function _escHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
 
   function _startLiveRefresh() {

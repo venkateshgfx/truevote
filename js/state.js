@@ -145,30 +145,58 @@ const State = (() => {
       return _state.slides[_state.activeSlideIndex] || null;
     },
 
-    addSlide() {
+    addSlide(type = 'poll') {
       const id = `slide_${Date.now()}`;
-      const slide = {
-        id,
-        question: 'New Question?',
-        options: [
-          { text: 'Option A', color: OPTION_COLORS[0] },
-          { text: 'Option B', color: OPTION_COLORS[1] },
-          { text: 'Option C', color: OPTION_COLORS[2] },
-        ],
-        multiSelect: false,
-        maxPicks: 1,
-        timerEnabled: false,
-        timerSeconds: 60,
-        locked: false,
-        bgColor: '#1a2547',
-        bgImage: null,
-        logoImage: null,
-        layout: 'bars',   // 'bars' | 'donut' | 'pie'
-        showResultsToAudience: true,
-      };
+      let slide;
+
+      if (type === 'rating') {
+        slide = {
+          id, type: 'rating',
+          question: 'Rate your experience',
+          maxStars: 5,
+          timerEnabled: false, timerSeconds: 60,
+          locked: false,
+          bgColor: '#1a2547', bgImage: null, logoImage: null,
+          showResultsToAudience: true,
+        };
+      } else if (type === 'text') {
+        slide = {
+          id, type: 'text',
+          question: 'Section Title',
+          body: 'Add your message or information here. This slide does not collect votes.',
+          bgColor: '#1a2547', bgImage: null, logoImage: null,
+        };
+      } else if (type === 'qr') {
+        slide = {
+          id, type: 'qr',
+          question: 'Scan to Join',
+          subtitle: 'Use the QR code below to join this session on your device.',
+          bgColor: '#1a2547', bgImage: null, logoImage: null,
+        };
+      } else {
+        // default poll slide
+        slide = {
+          id, type: 'poll',
+          question: 'New Question?',
+          options: [
+            { text: 'Option A', color: OPTION_COLORS[0] },
+            { text: 'Option B', color: OPTION_COLORS[1] },
+            { text: 'Option C', color: OPTION_COLORS[2] },
+          ],
+          multiSelect: false,
+          maxPicks: 1,
+          timerEnabled: false,
+          timerSeconds: 60,
+          locked: false,
+          bgColor: '#1a2547', bgImage: null, logoImage: null,
+          layout: 'bars',
+          showResultsToAudience: true,
+        };
+      }
+
       const newSlides = [..._state.slides, slide];
-      const newVotes = { ..._state.votes, [id]: {} };
-      const newPoll = { ..._state.pollStatus, [id]: 'pending' };
+      const newVotes  = { ..._state.votes,      [id]: {} };
+      const newPoll   = { ..._state.pollStatus,  [id]: type === 'text' || type === 'qr' ? 'open' : 'pending' };
       this.set({ slides: newSlides, votes: newVotes, pollStatus: newPoll, activeSlideIndex: newSlides.length - 1 });
       return slide;
     },
@@ -204,6 +232,19 @@ const State = (() => {
       const slide = _state.slides.find(s => s.id === slideId);
       if (!slide) return [];
       const slideVotes = _state.votes[slideId] || {};
+
+      // Rating slides: tally votes per star value (1-5)
+      if (slide.type === 'rating') {
+        const maxStars = slide.maxStars || 5;
+        const counts = Array.from({ length: maxStars }, () => 0);
+        Object.values(slideVotes).forEach(v => {
+          const star = v.options?.[0]; // star index 0..maxStars-1
+          if (star !== undefined && counts[star] !== undefined) counts[star]++;
+        });
+        return counts;
+      }
+
+      if (!slide.options) return [];
       const counts = slide.options.map(() => 0);
       Object.values(slideVotes).forEach(v => {
         v.options.forEach(idx => { if (counts[idx] !== undefined) counts[idx]++; });
