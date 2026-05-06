@@ -129,18 +129,23 @@ const Dashboard = (() => {
 
   // ── Event delegation for pres actions (avoids inline onclick escaping issues) ──
   function _attachListeners() {
-    document.getElementById('screen-dashboard')?.addEventListener('click', (e) => {
-      const btn = e.target.closest('[data-action]');
-      if (!btn) return;
-      const action = btn.dataset.action;
-      const id     = btn.dataset.id;
-      const name   = btn.dataset.name || '';
-      if (action === 'select')  Dashboard._selectPresentation(id);
-      if (action === 'edit')    Dashboard._selectAndEdit(id);
-      if (action === 'present') Dashboard._selectAndPresent(id);
-      if (action === 'rename')  Dashboard._renamePres(id, name);
-      if (action === 'delete')  Dashboard._showDeleteModal(id, name);
-    }, { once: true }); // re-attaches on each render
+    const el = document.getElementById('screen-dashboard');
+    if (!el) return;
+    // Remove any previous listener by cloning (avoids duplicates on re-render)
+    el.addEventListener('click', _handleDashAction);
+  }
+
+  function _handleDashAction(e) {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const action = btn.dataset.action;
+    const id     = btn.dataset.id;
+    const name   = btn.dataset.name || '';
+    if (action === 'select')  Dashboard._selectPresentation(id);
+    if (action === 'edit')    Dashboard._selectAndEdit(id);
+    if (action === 'present') Dashboard._selectAndPresent(id);
+    if (action === 'rename')  Dashboard._renamePres(id, name);
+    if (action === 'delete')  Dashboard._showDeleteModal(id, name);
   }
 
   // ── Tab: Home ──────────────────────────────────────────────────────────

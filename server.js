@@ -35,9 +35,37 @@ const serverState = {
 };
 
 // ── Cloud Presentations Store ────────────────────────────────────────────────
-// In-memory store: { [presId]: presentationObject }
-// Survives across browser sessions; shared across all connected clients.
-const presStore = {};
+// File-backed store: survives server restarts.
+const DATA_DIR  = path.join(__dirname, 'data');
+const PRES_FILE = path.join(DATA_DIR, 'presentations.json');
+
+// Ensure data directory exists
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+
+// Load from disk on startup
+let presStore = {};
+try {
+  if (fs.existsSync(PRES_FILE)) {
+    presStore = JSON.parse(fs.readFileSync(PRES_FILE, 'utf-8'));
+    console.log(`  📂  Loaded ${Object.keys(presStore).length} presentation(s) from disk`);
+  }
+} catch (e) {
+  console.error('  ⚠️  Failed to load presentations from disk:', e.message);
+  presStore = {};
+}
+
+// Debounced save to disk
+let _saveTimer = null;
+function _saveToDisk() {
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(() => {
+    try {
+      fs.writeFileSync(PRES_FILE, JSON.stringify(presStore, null, 2), 'utf-8');
+    } catch (e) {
+      console.error('  ⚠️  Failed to save presentations:', e.message);
+    }
+  }, 300);
+}
 
 // ── SSE client registry ─────────────────────────────────────────────────────
 const clients = new Set();
@@ -180,6 +208,7 @@ const server = http.createServer(async (req, res) => {
     };
     // Broadcast updated list to all connected clients
     broadcast('presentations', { presentations: Object.values(presStore) });
+    _saveToDisk();
     return json(res, 200, { ok: true, presentation: presStore[id] });
   }
 
@@ -190,6 +219,7 @@ const server = http.createServer(async (req, res) => {
     if (presStore[id]) {
       delete presStore[id];
       broadcast('presentations', { presentations: Object.values(presStore) });
+      _saveToDisk();
     }
     return json(res, 200, { ok: true });
   }

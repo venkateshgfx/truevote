@@ -548,20 +548,23 @@ const Presentation = (() => {
   }
 
   function _exit() {
-    clearInterval(liveRefreshInterval);
-    _stopTimer();
+    try { clearInterval(liveRefreshInterval); } catch {}
+    try { _stopTimer(); } catch {}
 
     // Stop broadcasting — participants will see the lobby again
-    State.setPresenting(false);
+    try { State.setPresenting(false); } catch {}
 
     // Clear server state so participants get the "session not started" lobby
-    if (typeof API !== 'undefined') {
-      API.pushSlides([]);          // empty slides → participant sees lobby
-      API.pushNavigate(0);
-    }
+    try {
+      if (typeof API !== 'undefined') {
+        API.pushSlides([]);
+        API.pushNavigate(0);
+      }
+    } catch {}
 
+    // Navigate back to editor (always succeeds — App.navigate is safe)
     App.navigate('editor');
-    Editor._refresh();
+    try { Editor._refresh(); } catch {}
   }
 
   // ── Brightness calculation ──
